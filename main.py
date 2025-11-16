@@ -17,11 +17,8 @@ from interfaz_restaurante import InterfazRestaurante
 def main():
     """Función principal que inicia la aplicación"""
     try:
-        # Crear la ventana raíz
-        ventana_raiz = tk.Tk()
-        
-        # Crear e inicializar la interfaz del POS
-        app = InterfazRestaurante(ventana_raiz)
+        # Crear e inicializar la interfaz del POS (ahora crea su propia ventana)
+        app = InterfazRestaurante()
         
         # Ejecutar la aplicación
         app.ejecutar()
