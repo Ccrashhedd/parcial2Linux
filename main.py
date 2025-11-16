@@ -12,8 +12,8 @@ import os
 # Agregar el directorio actual al path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Usar interfaz v3 mejorada con pestañas
-from interfaz_restaurante_v3 import InterfazRestaurante
+# Usar interfaz del restaurante con pestañas
+from interfaz_restaurante import InterfazRestaurante
 
 
 def main():
