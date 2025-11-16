@@ -197,10 +197,13 @@ class InterfazRestaurante:
         card = tk.Frame(parent, bg=self.COLORES['fondo_card'])
         card.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
         
-        # Items del carrito
-        canvas_carrito = tk.Canvas(card, bg=self.COLORES['fondo_card'],
+        # Items del carrito (con scroll)
+        items_container = tk.Frame(card, bg=self.COLORES['fondo_card'])
+        items_container.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        
+        canvas_carrito = tk.Canvas(items_container, bg=self.COLORES['fondo_card'],
                                   highlightthickness=0, height=250)
-        scrollbar = ttk.Scrollbar(card, orient="vertical", command=canvas_carrito.yview)
+        scrollbar = ttk.Scrollbar(items_container, orient="vertical", command=canvas_carrito.yview)
         
         self.carrito_frame = tk.Frame(canvas_carrito, bg=self.COLORES['fondo_card'])
         self.carrito_frame.bind(
