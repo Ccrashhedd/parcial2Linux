@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Aplicación principal - Sistema Operativo Parcial 2
-Programa en Python que corre en Linux con interfaz gráfica en TKinter
-y conexión a base de datos PostgreSQL
+POS (Punto de Venta) para Restaurante con interfaz gráfica Tkinter
 """
 
 import tkinter as tk
@@ -12,7 +11,7 @@ import os
 # Agregar el directorio actual al path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from interfaze import InterfazPrincipal
+from interfaz_restaurante import InterfazRestaurante
 
 
 def main():
@@ -21,8 +20,8 @@ def main():
         # Crear la ventana raíz
         ventana_raiz = tk.Tk()
         
-        # Crear e inicializar la interfaz
-        app = InterfazPrincipal(ventana_raiz)
+        # Crear e inicializar la interfaz del POS
+        app = InterfazRestaurante(ventana_raiz)
         
         # Ejecutar la aplicación
         app.ejecutar()
