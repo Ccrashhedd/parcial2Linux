@@ -56,11 +56,30 @@ class InterfazRestaurante:
     
     def _crear_notebook(self):
         """Crear interfaz con pestañas"""
-        # Personalizar estilo de notebook
+        # Personalizar estilo de notebook y controles
         style = ttk.Style()
         style.theme_use('clam')
         style.configure('TNotebook', background=self.COLORES['fondo_principal'])
         style.configure('TNotebook.Tab', padding=[20, 10])
+        
+        # Configurar Combobox moderno
+        style.configure('TCombobox', 
+                       fieldbackground=self.COLORES['fondo_card'],
+                       background=self.COLORES['acento_dorado'],
+                       foreground=self.COLORES['texto_principal'],
+                       insertcolor=self.COLORES['acento_dorado'],
+                       arrowcolor=self.COLORES['acento_dorado'])
+        style.map('TCombobox',
+                 fieldbackground=[('readonly', self.COLORES['fondo_card'])],
+                 foreground=[('readonly', self.COLORES['texto_principal'])])
+        
+        # Configurar Scrollbar moderno
+        style.configure('TScrollbar',
+                       background=self.COLORES['fondo_card'],
+                       troughcolor=self.COLORES['fondo_principal'],
+                       arrowcolor=self.COLORES['acento_dorado'],
+                       darkcolor=self.COLORES['fondo_card'],
+                       lightcolor=self.COLORES['fondo_card'])
         
         notebook = ttk.Notebook(self.ventana)
         notebook.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
@@ -82,20 +101,30 @@ class InterfazRestaurante:
     
     def _crear_tab_menu(self, parent):
         """Pestaña con menú de items"""
-        # Panel superior con categoría
-        header_frame = tk.Frame(parent, bg=self.COLORES['fondo_card'], height=60)
-        header_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Panel superior con categoría - diseño mejorado
+        header_frame = tk.Frame(parent, bg=self.COLORES['fondo_card'], height=70)
+        header_frame.pack(fill=tk.X, padx=15, pady=12)
         header_frame.pack_propagate(False)
         
-        tk.Label(header_frame, text="Categoría:", bg=self.COLORES['fondo_card'],
-                fg=self.COLORES['texto_principal'], font=('Inter', 11, 'bold')).pack(side=tk.LEFT, padx=10, pady=10)
+        # Container interior para alineación
+        inner_frame = tk.Frame(header_frame, bg=self.COLORES['fondo_card'])
+        inner_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        
+        # Label con diseño mejorado
+        label = tk.Label(inner_frame, text="🎯 Selecciona una Categoría:", 
+                        bg=self.COLORES['fondo_card'],
+                        fg=self.COLORES['acento_dorado'], 
+                        font=('Inter', 12, 'bold'))
+        label.pack(side=tk.LEFT, padx=(0, 15))
         
         self.categoria_var = tk.StringVar(value="Todos")
         categorias = ["Todos", "Entradas", "Platos Principales", "Ensaladas", 
                      "Bebidas", "Bebidas Alcohólicas", "Postres", "Acompañamientos"]
         
-        combo = ttk.Combobox(header_frame, textvariable=self.categoria_var, values=categorias, state="readonly")
-        combo.pack(side=tk.LEFT, padx=10, pady=10)
+        combo = ttk.Combobox(inner_frame, textvariable=self.categoria_var, 
+                            values=categorias, state="readonly", width=25,
+                            font=('Inter', 10))
+        combo.pack(side=tk.LEFT, padx=5)
         combo.bind("<<ComboboxSelected>>", lambda e: self._actualizar_grid_menu())
         
         # Panel principal con grid
@@ -128,27 +157,39 @@ class InterfazRestaurante:
         categoria = self.categoria_var.get()
         row = 0
         col = 0
+        items_encontrados = 0
         
-        # Items del menú predefinido
+        # Items del menú predefinido (self.menu.items es un diccionario)
         try:
-            for item in self.menu.items:
+            # Iterar sobre los valores del diccionario
+            for item in self.menu.items.values():
                 if categoria == "Todos" or item.categoria == categoria:
                     self._crear_card_menu(self.menu_frame, item, row, col)
+                    items_encontrados += 1
                     col += 1
                     if col >= 3:
                         col = 0
                         row += 1
-        except:
-            pass
+        except Exception as e:
+            print(f"Error al cargar menú: {e}")
         
         # Items personalizados
         for prod in self.productos_personalizados:
             if categoria == "Todos" or prod.get('categoria') == categoria:
                 self._crear_card_producto_custom(self.menu_frame, prod, row, col)
+                items_encontrados += 1
                 col += 1
                 if col >= 3:
                     col = 0
                     row += 1
+        
+        # Mensaje si no hay items
+        if items_encontrados == 0:
+            msg_frame = tk.Frame(self.menu_frame, bg=self.COLORES['fondo_principal'])
+            msg_frame.pack(fill=tk.BOTH, expand=True, pady=50)
+            tk.Label(msg_frame, text="❌ Sin productos en esta categoría",
+                    font=('Inter', 14), fg=self.COLORES['texto_secundario'],
+                    bg=self.COLORES['fondo_principal']).pack()
     
     def _crear_card_menu(self, parent, item, row, col):
         """Crear card de un item del menú"""
@@ -328,9 +369,18 @@ class InterfazRestaurante:
             widget.destroy()
         
         if not self.pedido.items:
-            tk.Label(self.carrito_frame, text="Carrito vacío\nAgrega items desde el menú",
-                    font=('Inter', 12), fg=self.COLORES['texto_secundario'],
-                    bg=self.COLORES['fondo_principal'], justify=tk.CENTER).pack(expand=True, pady=40)
+            # Frame centrado para el carrito vacío
+            empty_frame = tk.Frame(self.carrito_frame, bg=self.COLORES['fondo_principal'])
+            empty_frame.pack(expand=True, fill=tk.BOTH)
+            
+            tk.Label(empty_frame, text="🛒\nCarrito Vacío",
+                    font=('Inter', 16, 'bold'), fg=self.COLORES['acento_dorado'],
+                    bg=self.COLORES['fondo_principal']).pack(pady=(40, 10))
+            
+            tk.Label(empty_frame, text="Agrega items desde el menú",
+                    font=('Inter', 11), fg=self.COLORES['texto_secundario'],
+                    bg=self.COLORES['fondo_principal']).pack(pady=(0, 40))
+            
             self._actualizar_totales()
             return
         
