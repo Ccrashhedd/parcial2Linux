@@ -369,17 +369,35 @@ class InterfazRestaurante:
             widget.destroy()
         
         if not self.pedido.items:
-            # Frame centrado para el carrito vacío
+            # Frame centrado para el carrito vacío - usa anchor center
             empty_frame = tk.Frame(self.carrito_frame, bg=self.COLORES['fondo_principal'])
-            empty_frame.pack(expand=True, fill=tk.BOTH)
+            empty_frame.pack(expand=True, fill=tk.BOTH, anchor=tk.CENTER)
             
-            tk.Label(empty_frame, text="🛒\nCarrito Vacío",
-                    font=('Inter', 16, 'bold'), fg=self.COLORES['acento_dorado'],
-                    bg=self.COLORES['fondo_principal']).pack(pady=(40, 10))
+            # Contenedor interior para centrado perfecto
+            inner_container = tk.Frame(empty_frame, bg=self.COLORES['fondo_principal'])
+            inner_container.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
             
-            tk.Label(empty_frame, text="Agrega items desde el menú",
+            # Título con emoji
+            title_label = tk.Label(inner_container, text="🛒",
+                    font=('Inter', 48), fg=self.COLORES['acento_dorado'],
+                    bg=self.COLORES['fondo_principal'])
+            title_label.pack()
+            
+            # Texto principal
+            main_text = tk.Label(inner_container, text="Carrito Vacío",
+                    font=('Inter', 18, 'bold'), fg=self.COLORES['acento_dorado'],
+                    bg=self.COLORES['fondo_principal'])
+            main_text.pack(pady=(10, 5))
+            
+            # Texto secundario con diseño
+            subtitle_frame = tk.Frame(inner_container, bg=self.COLORES['fondo_card'], 
+                                     relief=tk.FLAT, bd=1)
+            subtitle_frame.pack(pady=(5, 0), padx=20)
+            
+            subtitle_label = tk.Label(subtitle_frame, text="Agrega items desde el menú",
                     font=('Inter', 11), fg=self.COLORES['texto_secundario'],
-                    bg=self.COLORES['fondo_principal']).pack(pady=(0, 40))
+                    bg=self.COLORES['fondo_card'], padx=20, pady=10)
+            subtitle_label.pack()
             
             self._actualizar_totales()
             return
