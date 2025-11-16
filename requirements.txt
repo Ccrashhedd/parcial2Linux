@@ -1,0 +1,10 @@
+# Dependencias del proyecto - Sistema Operativo Parcial 2
+
+# Base de datos
+psycopg2-binary==2.9.9
+
+# Interfaz gráfica (TKinter viene incluido en Python)
+# No necesita instalación adicional en la mayoría de casos
+
+# Utilidades opcionales
+python-dotenv==1.0.0

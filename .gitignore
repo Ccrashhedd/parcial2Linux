@@ -1,0 +1,44 @@
+# Directorios
+__pycache__/
+venv/
+env/
+.venv/
+.env/
+dist/
+build/
+*.egg-info/
+
+# Archivos Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.log
+*.bak
+
+# Base de datos local
+*.db
+*.sqlite
+*.sqlite3
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
