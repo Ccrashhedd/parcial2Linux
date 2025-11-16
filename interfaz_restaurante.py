@@ -2,8 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import subprocess
 import tempfile
-from datetime import datetime
-from PIL import Image, ImageTk
+import datetime
 import os
 import json
 from modelo_restaurante import MenuItem, PedidoRestaurante, Menu
@@ -181,17 +180,17 @@ class InterfazRestaurante:
         card = tk.Frame(parent, bg=self.COLORES['fondo_card'], relief=tk.FLAT, bd=1)
         card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
         
-        # Imagen
-        if producto.get('imagen') and os.path.exists(producto['imagen']):
-            try:
-                img = Image.open(producto['imagen'])
-                img.thumbnail((200, 150), Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(img)
-                lbl_img = tk.Label(card, image=photo, bg=self.COLORES['fondo_card'])
-                lbl_img.image = photo
-                lbl_img.pack(pady=5)
-            except:
-                pass
+        # Imagen (comentada - no requiere PIL)
+        # if producto.get('imagen') and os.path.exists(producto['imagen']):
+        #     try:
+        #         img = Image.open(producto['imagen'])
+        #         img.thumbnail((200, 150), Image.Resampling.LANCZOS)
+        #         photo = ImageTk.PhotoImage(img)
+        #         lbl_img = tk.Label(card, image=photo, bg=self.COLORES['fondo_card'])
+        #         lbl_img.image = photo
+        #         lbl_img.pack(pady=5)
+        #     except:
+        #         pass
         
         # Nombre
         tk.Label(card, text=producto['nombre'], font=('Inter', 11, 'bold'),
