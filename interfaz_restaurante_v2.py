@@ -199,7 +199,7 @@ class InterfazRestaurante:
         
         # Items del carrito
         canvas_carrito = tk.Canvas(card, bg=self.COLORES['fondo_card'],
-                                  highlightthickness=0, height=300)
+                                  highlightthickness=0, height=250)
         scrollbar = ttk.Scrollbar(card, orient="vertical", command=canvas_carrito.yview)
         
         self.carrito_frame = tk.Frame(canvas_carrito, bg=self.COLORES['fondo_card'])
@@ -214,15 +214,82 @@ class InterfazRestaurante:
         canvas_carrito.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 15), pady=15)
         
-        # Resumen
+        # Resumen detallado
         resumen_frame = tk.Frame(card, bg=self.COLORES['fondo_card'])
         resumen_frame.pack(fill=tk.X, padx=15, pady=15)
         
-        self.label_total = tk.Label(resumen_frame, text="Total: $0",
-                                   font=('Inter', 14, 'bold'),
+        # Subtotal
+        subtotal_frame = tk.Frame(resumen_frame, bg=self.COLORES['fondo_card'])
+        subtotal_frame.pack(fill=tk.X, pady=5)
+        tk.Label(subtotal_frame, text="Subtotal:",
+                font=('Inter', 10),
+                fg=self.COLORES['texto_secundario'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.LEFT)
+        self.label_subtotal = tk.Label(subtotal_frame, text="$0",
+                                       font=('Inter', 10, 'bold'),
+                                       fg=self.COLORES['texto_principal'],
+                                       bg=self.COLORES['fondo_card'])
+        self.label_subtotal.pack(side=tk.RIGHT)
+        
+        # ITBMS
+        itbms_frame = tk.Frame(resumen_frame, bg=self.COLORES['fondo_card'])
+        itbms_frame.pack(fill=tk.X, pady=5)
+        tk.Label(itbms_frame, text="ITBMS (19%):",
+                font=('Inter', 10),
+                fg=self.COLORES['texto_secundario'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.LEFT)
+        self.label_itbms = tk.Label(itbms_frame, text="$0",
+                                   font=('Inter', 10, 'bold'),
+                                   fg=self.COLORES['texto_principal'],
+                                   bg=self.COLORES['fondo_card'])
+        self.label_itbms.pack(side=tk.RIGHT)
+        
+        # Descuento
+        descuento_frame = tk.Frame(resumen_frame, bg=self.COLORES['fondo_card'])
+        descuento_frame.pack(fill=tk.X, pady=5)
+        tk.Label(descuento_frame, text="Descuento:",
+                font=('Inter', 10),
+                fg=self.COLORES['texto_secundario'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.LEFT)
+        self.descuento_var = tk.StringVar(value="0")
+        self.entry_descuento = tk.Entry(descuento_frame, textvariable=self.descuento_var,
+                                       width=10, font=('Inter', 9))
+        self.entry_descuento.pack(side=tk.RIGHT)
+        self.entry_descuento.bind("<KeyRelease>", lambda e: self._actualizar_total())
+        
+        # Separador
+        sep = tk.Frame(resumen_frame, bg=self.COLORES['acento_dorado'], height=1)
+        sep.pack(fill=tk.X, pady=8)
+        
+        # Total
+        total_frame = tk.Frame(resumen_frame, bg=self.COLORES['fondo_card'])
+        total_frame.pack(fill=tk.X, pady=5)
+        tk.Label(total_frame, text="TOTAL:",
+                font=('Inter', 12, 'bold'),
+                fg=self.COLORES['acento_dorado'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.LEFT)
+        self.label_total = tk.Label(total_frame, text="$0",
+                                   font=('Inter', 12, 'bold'),
                                    fg=self.COLORES['acento_dorado'],
                                    bg=self.COLORES['fondo_card'])
-        self.label_total.pack(pady=10)
+        self.label_total.pack(side=tk.RIGHT)
+        
+        # Metodo de pago
+        pago_frame = tk.LabelFrame(card, text="Metodo de Pago",
+                                  bg=self.COLORES['fondo_card'],
+                                  fg=self.COLORES['acento_dorado'],
+                                  font=('Inter', 9, 'bold'),
+                                  padx=10, pady=8)
+        pago_frame.pack(fill=tk.X, padx=15, pady=(0, 15))
+        
+        self.metodo_pago_var = tk.StringVar(value="Efectivo")
+        for metodo in ["Efectivo", "Tarjeta Credito", "Tarjeta Debito", "Transferencia"]:
+            tk.Radiobutton(pago_frame, text=metodo, variable=self.metodo_pago_var, value=metodo,
+                          bg=self.COLORES['fondo_card'],
+                          fg=self.COLORES['texto_principal'],
+                          selectcolor=self.COLORES['acento_dorado'],
+                          activebackground=self.COLORES['fondo_card'],
+                          font=('Inter', 9)).pack(anchor=tk.W, pady=2)
         
         # Botones de accion
         botones_frame = tk.Frame(card, bg=self.COLORES['fondo_card'])
@@ -344,9 +411,26 @@ class InterfazRestaurante:
         self._mostrar_notificacion("Carrito limpiado")
     
     def _actualizar_total(self):
-        """Actualizar total"""
-        total = self.pedido.calcular_total()
-        self.label_total.config(text=f"Total: ${total:,.0f}")
+        """Actualizar total con ITBMS y descuento"""
+        subtotal = self.pedido.calcular_total()
+        
+        # Obtener descuento
+        try:
+            descuento = float(self.descuento_var.get() or 0)
+        except ValueError:
+            descuento = 0
+            self.descuento_var.set("0")
+        
+        # Calcular ITBMS del subtotal
+        itbms = subtotal * 0.19
+        
+        # Total final
+        total = subtotal + itbms - descuento
+        
+        # Actualizar labels
+        self.label_subtotal.config(text=f"${subtotal:,.0f}")
+        self.label_itbms.config(text=f"${itbms:,.0f}")
+        self.label_total.config(text=f"${total:,.0f}")
     
     def _procesar_pedido(self):
         """Procesar pedido y mostrar opciones de pago"""
@@ -354,9 +438,17 @@ class InterfazRestaurante:
             messagebox.showwarning("Carrito Vacio", "Agrega items antes de procesar")
             return
         
-        self._mostrar_ventana_pago()
+        # Obtener datos
+        try:
+            descuento = float(self.descuento_var.get() or 0)
+        except ValueError:
+            descuento = 0
+        
+        metodo_pago = self.metodo_pago_var.get()
+        
+        self._mostrar_ventana_pago(descuento, metodo_pago)
     
-    def _mostrar_ventana_pago(self):
+    def _mostrar_ventana_pago(self, descuento=0, metodo_pago="Efectivo"):
         """Ventana de pago con datos"""
         
         pago = tk.Toplevel(self.ventana)
@@ -390,17 +482,17 @@ class InterfazRestaurante:
         tk.Label(cliente_frame, text="Mesa:", bg=self.COLORES['fondo_card'],
                 fg=self.COLORES['texto_principal']).pack(anchor=tk.W, pady=5)
         mesa_var = tk.StringVar()
-        mesa_entry = tk.Entry(cliente_frame, textvariable=mesa_var)
+        mesa_entry = tk.Entry(cliente_frame, textvariable=mesa_var, font=('Inter', 10))
         mesa_entry.pack(fill=tk.X, pady=(0, 10))
         mesa_entry.focus()
         
         tk.Label(cliente_frame, text="Mesero:", bg=self.COLORES['fondo_card'],
                 fg=self.COLORES['texto_principal']).pack(anchor=tk.W, pady=5)
         mesero_var = tk.StringVar(value="Admin")
-        mesero_entry = tk.Entry(cliente_frame, textvariable=mesero_var)
+        mesero_entry = tk.Entry(cliente_frame, textvariable=mesero_var, font=('Inter', 10))
         mesero_entry.pack(fill=tk.X)
         
-        # Resumen de items
+        # Resumen de items y totales
         resumen_frame = tk.LabelFrame(container, text="Resumen del Pedido",
                                      bg=self.COLORES['fondo_card'],
                                      fg=self.COLORES['acento_dorado'],
@@ -408,19 +500,43 @@ class InterfazRestaurante:
                                      padx=15, pady=10)
         resumen_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
         
+        # Items
         for item in self.pedido.items:
             subtotal = item['precio'] * item['cantidad']
             tk.Label(resumen_frame, 
                     text=f"{item['nombre']} x{item['cantidad']} = ${subtotal:,.0f}",
                     bg=self.COLORES['fondo_card'],
-                    fg=self.COLORES['texto_principal']).pack(anchor=tk.W, pady=2)
+                    fg=self.COLORES['texto_principal'],
+                    font=('Inter', 9)).pack(anchor=tk.W, pady=2)
         
-        # Total
-        total = self.pedido.calcular_total()
-        tk.Label(container, text=f"Total: ${total:,.0f}",
-                font=('Inter', 14, 'bold'),
+        # Totales
+        subtotal_total = self.pedido.calcular_total()
+        itbms_total = subtotal_total * 0.19
+        total_final = subtotal_total + itbms_total - descuento
+        
+        sep = tk.Frame(resumen_frame, bg=self.COLORES['acento_dorado'], height=1)
+        sep.pack(fill=tk.X, pady=8)
+        
+        tk.Label(resumen_frame, text=f"Subtotal: ${subtotal_total:,.0f}",
+                bg=self.COLORES['fondo_card'],
+                fg=self.COLORES['texto_principal'],
+                font=('Inter', 10)).pack(anchor=tk.E, pady=2)
+        
+        tk.Label(resumen_frame, text=f"ITBMS (19%): ${itbms_total:,.0f}",
+                bg=self.COLORES['fondo_card'],
+                fg=self.COLORES['texto_principal'],
+                font=('Inter', 10)).pack(anchor=tk.E, pady=2)
+        
+        if descuento > 0:
+            tk.Label(resumen_frame, text=f"Descuento: -${descuento:,.0f}",
+                    bg=self.COLORES['fondo_card'],
+                    fg=self.COLORES['verde_success'],
+                    font=('Inter', 10, 'bold')).pack(anchor=tk.E, pady=2)
+        
+        tk.Label(resumen_frame, text=f"TOTAL: ${total_final:,.0f}",
+                bg=self.COLORES['fondo_card'],
                 fg=self.COLORES['acento_dorado'],
-                bg=self.COLORES['fondo_principal']).pack(pady=(0, 15))
+                font=('Inter', 12, 'bold')).pack(anchor=tk.E, pady=5)
         
         # Metodo de pago
         pago_frame = tk.LabelFrame(container, text="Metodo de Pago",
@@ -430,13 +546,14 @@ class InterfazRestaurante:
                                   padx=15, pady=10)
         pago_frame.pack(fill=tk.X, pady=(0, 20))
         
-        metodo_var = tk.StringVar(value="Efectivo")
-        for metodo in ["Efectivo", "Tarjeta Credito", "Tarjeta Debito"]:
+        metodo_var = tk.StringVar(value=metodo_pago)
+        for metodo in ["Efectivo", "Tarjeta Credito", "Tarjeta Debito", "Transferencia"]:
             tk.Radiobutton(pago_frame, text=metodo, variable=metodo_var, value=metodo,
                           bg=self.COLORES['fondo_card'],
                           fg=self.COLORES['texto_principal'],
                           selectcolor=self.COLORES['acento_dorado'],
-                          activebackground=self.COLORES['fondo_card']).pack(anchor=tk.W, pady=3)
+                          activebackground=self.COLORES['fondo_card'],
+                          font=('Inter', 10)).pack(anchor=tk.W, pady=3)
         
         # Botones
         botones = tk.Frame(container, bg=self.COLORES['fondo_principal'])
@@ -459,7 +576,10 @@ class InterfazRestaurante:
                 'mesa': mesa,
                 'mesero': mesero,
                 'items': self.pedido.items.copy(),
-                'total': total,
+                'subtotal': subtotal_total,
+                'itbms': itbms_total,
+                'descuento': descuento,
+                'total': total_final,
                 'metodo_pago': metodo_var.get(),
                 'restaurante': self.nombre_negocio.get(),
                 'nit': self.nit_negocio.get()
@@ -667,7 +787,7 @@ class InterfazRestaurante:
         
         # Frame de impresora
         printer_frame = tk.Frame(container, bg=self.COLORES['fondo_card'])
-        printer_frame.pack(fill=tk.X, pady=(0, 20), padx=10, pady=10)
+        printer_frame.pack(fill=tk.X, pady=(0, 20), padx=10)
         
         tk.Label(printer_frame, text="Impresora:",
                 bg=self.COLORES['fondo_card'],
