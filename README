@@ -1,0 +1,293 @@
+# Sistema Operativo - Parcial 2
+
+## Descripcion
+Aplicacion Python ejecutable en Linux con interfaz grafica TKinter y conexion a base de datos PostgreSQL.
+
+Lenguaje: Python
+Base de datos: PostgreSQL
+UI: TKinter
+
+---
+
+## INSTRUCCIONES DE INSTALACION Y EJECUCION
+
+### OPCION 1: INSTALACION AUTOMATICA (RECOMENDADA)
+
+Paso 1: Dale permisos de ejecucion a los scripts
+```bash
+chmod +x install.sh
+chmod +x main.py
+chmod +x run.sh
+```
+
+Paso 2: Ejecuta el instalador automatico
+```bash
+./install.sh
+```
+
+Este script verificara:
+- Python 3 instalado
+- pip3 instalado
+- TKinter instalado
+- Creara entorno virtual automaticamente
+- Instalara todas las dependencias
+
+Paso 3: Ejecuta la aplicacion
+```bash
+./run.sh
+```
+
+O simplemente:
+```bash
+python3 main.py
+```
+
+---
+
+### OPCION 2: INSTALACION MANUAL
+
+Paso 1: Instala dependencias del sistema
+
+Para Ubuntu/Debian:
+```bash
+sudo apt-get update
+sudo apt-get install python3-tk python3-pip python3-venv postgresql postgresql-contrib
+```
+
+Para Fedora/RHEL:
+```bash
+sudo dnf install python3-tkinter python3-pip postgresql postgresql-server
+```
+
+Para Arch Linux:
+```bash
+sudo pacman -S tk python-pip postgresql
+```
+
+Paso 2: Navega al directorio del proyecto
+```bash
+cd parcial2Linux
+```
+
+Paso 3: Crea un entorno virtual
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+Paso 4: Instala las dependencias de Python
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Paso 5: Ejecuta la aplicacion
+```bash
+python3 main.py
+```
+
+O hazla ejecutable:
+```bash
+chmod +x main.py
+./main.py
+```
+
+---
+
+### OPCION 3: CON MAKE
+
+Si tienes make instalado, puedes usar:
+
+```bash
+make install    # Instala dependencias
+make run        # Ejecuta la aplicacion
+make clean      # Limpia archivos temporales
+```
+
+---
+
+## REQUISITOS MINIMOS
+
+- Python 3.7 o superior
+- pip3
+- PostgreSQL (para funcionalidad completa)
+- Linux (Ubuntu, Debian, Fedora, Arch, etc.)
+
+---
+
+## ESTRUCTURA DEL PROYECTO
+
+```
+parcial2Linux/
+├── main.py                    # Archivo ejecutable principal
+├── interfaze.py               # Interfaz grafica TKinter
+├── conexionDB.py              # Conexion a PostgreSQL (vacio)
+├── requirements.txt           # Dependencias Python
+├── install.sh                 # Instalador automatico
+├── run.sh                     # Ejecutor rapido
+├── setup.py                   # Configuracion de instalacion
+├── Makefile                   # Comandos utiles
+├── .env.example               # Template de configuracion
+├── .gitignore                 # Archivos ignorados por git
+└── DB/
+    └── DB.sql                 # Scripts SQL
+```
+
+---
+
+## SOLUCION DE PROBLEMAS
+
+Error: "No module named 'tkinter'"
+Solucion Ubuntu/Debian:
+```bash
+sudo apt-get install python3-tk
+```
+
+Solucion Fedora/RHEL:
+```bash
+sudo dnf install python3-tkinter
+```
+
+Solucion Arch Linux:
+```bash
+sudo pacman -S tk
+```
+
+---
+
+Error: "ModuleNotFoundError: No module named 'psycopg2'"
+Solucion:
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+Error: "La aplicacion no se ejecuta"
+Soluciones:
+```bash
+# Verificar permisos
+chmod +x main.py
+
+# Ejecutar con python3 explicitamente
+python3 main.py
+
+# Verificar que el entorno virtual este activado
+source venv/bin/activate
+```
+
+---
+
+Error: "Command not found: python3"
+Solucion Ubuntu/Debian:
+```bash
+sudo apt-get install python3
+```
+
+---
+
+## VERIFICACIONES RAPIDAS
+
+Verifica que todo este instalado correctamente:
+
+Verificar Python:
+```bash
+python3 --version
+```
+
+Verificar pip:
+```bash
+pip3 --version
+```
+
+Verificar TKinter:
+```bash
+python3 -c "import tkinter; print('TKinter OK')"
+```
+
+Verificar PostgreSQL:
+```bash
+psql --version
+```
+
+---
+
+## CONFIGURACION DE BASE DE DATOS
+
+1. Copia el archivo .env.example a .env
+```bash
+cp .env.example .env
+```
+
+2. Edita el archivo .env con tus datos de conexion:
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=parcial2
+DB_USER=postgres
+DB_PASSWORD=tu_contraseña
+```
+
+3. Asegurate de que PostgreSQL este corriendo:
+```bash
+# En Ubuntu/Debian
+sudo service postgresql start
+
+# En Fedora
+sudo systemctl start postgresql
+```
+
+---
+
+## NOTAS IMPORTANTES
+
+- Asegurate de tener PostgreSQL instalado y corriendo antes de conectar
+- El entorno virtual aísla las dependencias del sistema
+- TKinter viene integrado en Python en la mayoría de distribuciones Linux
+- Si usas Windows, los scripts .sh no funcionaran directamente
+- Se recomienda usar Linux nativo o WSL2 en Windows
+
+---
+
+## COMANDOS RAPIDOS
+
+Activar entorno virtual:
+```bash
+source venv/bin/activate
+```
+
+Desactivar entorno virtual:
+```bash
+deactivate
+```
+
+Ver lista de paquetes instalados:
+```bash
+pip list
+```
+
+Limpiar archivos temporales:
+```bash
+find . -type d -name __pycache__ -exec rm -r {} +
+find . -type f -name "*.pyc" -delete
+```
+
+---
+
+## ESTADO ACTUAL
+
+Funcionalidades completadas:
+- Interfaz grafica basica con TKinter
+- Scripts de instalacion y ejecucion
+- Estructura de proyecto lista para produccion
+- Manejo de errores robusto
+
+Pendiente de implementar:
+- Conexion a base de datos PostgreSQL
+- Funcionalidades adicionales del programa
+
+---
+
+Ultima actualizacion: 11 de noviembre de 2025
+
+
