@@ -6,8 +6,8 @@ import datetime
 import os
 import json
 from modelo_restaurante import MenuItem, PedidoRestaurante, Menu
-
-
+from dialogo_impresion import DialogoImpresion
+from dialogo_login import DialogoLogin
 class InterfazRestaurante:
     def __init__(self):
         self.ventana = tk.Tk()
@@ -37,7 +37,18 @@ class InterfazRestaurante:
         self.descuento_var = tk.StringVar(value="0")
         self.metodo_pago_var = tk.StringVar(value="Efectivo")
         
-        # Crear interfaz
+        # Mostrar login primero usando módulo separado
+        DialogoLogin(self.ventana, self.COLORES, self._login_exitoso)
+    
+    def _login_exitoso(self):
+        """Callback cuando el login es exitoso"""
+        # Limpiar todos los widgets de la ventana
+        for widget in self.ventana.winfo_children():
+            widget.destroy()
+        
+        # Mostrar interfaz principal
+        self.ventana.geometry("1400x800")
+        self.ventana.title("POS RESTAURANT Premium")
         self._crear_notebook()
         
     def cargar_productos_personalizados(self):
@@ -136,12 +147,36 @@ class InterfazRestaurante:
         scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
         
         self.menu_frame = tk.Frame(canvas, bg=self.COLORES['fondo_principal'])
+        # Cuando el contenido cambie, actualizar scrollregion
         self.menu_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
-        
-        canvas.create_window((0, 0), window=self.menu_frame, anchor="nw")
+
+        # Insertar frame en canvas y mantener referencia al id de ventana
+        self.menu_window_id = canvas.create_window((0, 0), window=self.menu_frame, anchor="nw")
+        # Guardar referencia al canvas para recalcular columnas dinámicas
+        self.menu_canvas = canvas
+
+        # Parámetro de ancho mínimo estimado por tarjeta (incluye paddings)
+        # Ajusta este valor si tus cards son más anchas/estrechas
+        self.menu_min_card_width = 360
+
+        # Asegurar que el frame interno siempre tenga el mismo ancho que el canvas
+        # y re-calcular la grilla cuando el canvas cambie de tamaño
+        def _on_canvas_configure(event):
+            try:
+                canvas.itemconfig(self.menu_window_id, width=event.width)
+            except Exception:
+                pass
+            # Recalcular y re-layout de las tarjetas según el nuevo ancho
+            try:
+                # Llamamos a la actualización de la grilla (usa el ancho del canvas internamente)
+                self._actualizar_grid_menu()
+            except Exception:
+                pass
+
+        canvas.bind('<Configure>', _on_canvas_configure)
         canvas.configure(yscrollcommand=scrollbar.set)
         
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -150,41 +185,67 @@ class InterfazRestaurante:
         self._actualizar_grid_menu()
     
     def _actualizar_grid_menu(self):
-        """Actualizar grid de menú"""
+        """Actualizar grid de menú de forma optimizada"""
+        # Limpiar widgets previos
         for widget in self.menu_frame.winfo_children():
             widget.destroy()
         
         categoria = self.categoria_var.get()
         row = 0
         col = 0
+        # Calcular dinámicamente el número de columnas según el ancho disponible
+        try:
+            available_width = self.menu_canvas.winfo_width() if hasattr(self, 'menu_canvas') else None
+        except Exception:
+            available_width = None
+
+        # Ancho mínimo por tarjeta (incluye paddings/margins). Ajustable si necesitas tarjetas más pequeñas.
+        card_min = getattr(self, 'menu_min_card_width', 360)
+
+        if available_width and available_width > 0:
+            # Dejar un máximo razonable de columnas para evitar tarjetas demasiado pequeñas
+            max_columns = 6
+            columnas = max(1, min(max_columns, int(available_width // card_min)))
+        else:
+            columnas = 3
+
+        # Asegurar que las columnas se expandan uniformemente
+        for i in range(columnas):
+            try:
+                self.menu_frame.grid_columnconfigure(i, weight=1, uniform='col')
+            except Exception:
+                pass
         items_encontrados = 0
         
-        # Items del menú predefinido (self.menu.items es un diccionario)
-        try:
-            # Iterar sobre los valores del diccionario
-            for item in self.menu.items.values():
-                if categoria == "Todos" or item.categoria == categoria:
-                    self._crear_card_menu(self.menu_frame, item, row, col)
-                    items_encontrados += 1
-                    col += 1
-                    if col >= 3:
-                        col = 0
-                        row += 1
-        except Exception as e:
-            print(f"Error al cargar menú: {e}")
+        # Items del menú predefinido - usar lista en lugar de diccionario.values()
+        items_menu = list(self.menu.items.values())
+        items_personalizados = self.productos_personalizados
         
-        # Items personalizados
-        for prod in self.productos_personalizados:
+        # Combinar listas para una sola iteración
+        todos_items = []
+        for item in items_menu:
+            if categoria == "Todos" or item.categoria == categoria:
+                todos_items.append(('menu', item))
+        
+        for prod in items_personalizados:
             if categoria == "Todos" or prod.get('categoria') == categoria:
-                self._crear_card_producto_custom(self.menu_frame, prod, row, col)
+                todos_items.append(('custom', prod))
+        
+        # Renderizar items
+        if todos_items:
+            for tipo, item in todos_items:
+                if tipo == 'menu':
+                    self._crear_card_menu(self.menu_frame, item, row, col)
+                else:
+                    self._crear_card_producto_custom(self.menu_frame, item, row, col)
+                
                 items_encontrados += 1
                 col += 1
-                if col >= 3:
+                if col >= columnas:
                     col = 0
                     row += 1
-        
-        # Mensaje si no hay items
-        if items_encontrados == 0:
+        else:
+            # Mensaje si no hay items
             msg_frame = tk.Frame(self.menu_frame, bg=self.COLORES['fondo_principal'])
             msg_frame.pack(fill=tk.BOTH, expand=True, pady=50)
             tk.Label(msg_frame, text="❌ Sin productos en esta categoría",
@@ -192,88 +253,109 @@ class InterfazRestaurante:
                     bg=self.COLORES['fondo_principal']).pack()
     
     def _crear_card_menu(self, parent, item, row, col):
-        """Crear card de un item del menú"""
-        card = tk.Frame(parent, bg=self.COLORES['fondo_card'], relief=tk.FLAT, bd=1)
+        """Crear card de un item del menú - lado a lado"""
+        # Dejar que la tarjeta se adapte al tamaño de la columna para evitar espacios
+        card = tk.Frame(parent, bg=self.COLORES['fondo_card'], relief=tk.RAISED, bd=2)
         card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
-        
+
         # Nombre
-        tk.Label(card, text=item.nombre, font=('Inter', 11, 'bold'),
+        tk.Label(card, text=item.nombre, font=('Inter', 14, 'bold'),
                 fg=self.COLORES['texto_principal'],
-                bg=self.COLORES['fondo_card']).pack(pady=(10, 5), padx=10)
-        
+                bg=self.COLORES['fondo_card'], wraplength=420).pack(pady=(10, 10), padx=20)
+
         # Descripción
-        tk.Label(card, text=item.descripcion[:50] + "...", font=('Inter', 8),
+        desc_text = item.descripcion[:200] + "..." if len(item.descripcion) > 200 else item.descripcion
+        tk.Label(card, text=desc_text, font=('Inter', 11),
                 fg=self.COLORES['texto_secundario'],
-                bg=self.COLORES['fondo_card'], wraplength=200, justify=tk.CENTER).pack(pady=5, padx=10)
-        
+                bg=self.COLORES['fondo_card'], wraplength=420, justify=tk.CENTER).pack(pady=8, padx=20)
+
+        # Separador
+        tk.Frame(card, bg=self.COLORES['acento_dorado'], height=2).pack(fill=tk.X, pady=8, padx=15)
+
         # Precio
-        tk.Label(card, text=f"${item.precio:,.0f}", font=('Inter', 12, 'bold'),
+        precio_frame = tk.Frame(card, bg=self.COLORES['fondo_card'])
+        precio_frame.pack(pady=8, padx=15, fill=tk.X)
+
+        tk.Label(precio_frame, text="Precio:", font=('Inter', 10),
+                fg=self.COLORES['texto_secundario'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.LEFT)
+
+        tk.Label(precio_frame, text=f"${item.precio:,.0f}", font=('Inter', 13, 'bold'),
                 fg=self.COLORES['acento_dorado'],
-                bg=self.COLORES['fondo_card']).pack(pady=5)
-        
+                bg=self.COLORES['fondo_card']).pack(side=tk.RIGHT)
+
         # Botón Agregar
-        tk.Button(card, text="Agregar al Carrito", bg=self.COLORES['verde_success'],
-                 fg='white', font=('Inter', 9, 'bold'), relief='flat', padx=10, pady=8,
-                 command=lambda: self._agregar_al_carrito(item)).pack(fill=tk.X, padx=10, pady=(5, 10))
+        tk.Button(card, text="➕ Agregar al Carrito", bg=self.COLORES['verde_success'],
+                 fg='white', font=('Inter', 11, 'bold'), relief='flat', 
+                 padx=15, pady=12,
+                 command=lambda: self._agregar_al_carrito(item)).pack(fill=tk.X, padx=20, pady=(10, 14))
     
     def _crear_card_producto_custom(self, parent, producto, row, col):
-        """Crear card de un producto personalizado"""
-        card = tk.Frame(parent, bg=self.COLORES['fondo_card'], relief=tk.FLAT, bd=1)
+        """Crear card de un producto personalizado - lado a lado"""
+        card = tk.Frame(parent, bg=self.COLORES['fondo_card'], relief=tk.RAISED, bd=2)
         card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
-        
-        # Imagen (comentada - no requiere PIL)
-        # if producto.get('imagen') and os.path.exists(producto['imagen']):
-        #     try:
-        #         img = Image.open(producto['imagen'])
-        #         img.thumbnail((200, 150), Image.Resampling.LANCZOS)
-        #         photo = ImageTk.PhotoImage(img)
-        #         lbl_img = tk.Label(card, image=photo, bg=self.COLORES['fondo_card'])
-        #         lbl_img.image = photo
-        #         lbl_img.pack(pady=5)
-        #     except:
-        #         pass
-        
+
         # Nombre
-        tk.Label(card, text=producto['nombre'], font=('Inter', 11, 'bold'),
+        tk.Label(card, text=producto['nombre'], font=('Inter', 14, 'bold'),
                 fg=self.COLORES['texto_principal'],
-                bg=self.COLORES['fondo_card']).pack(pady=(5, 3), padx=10)
-        
-        # Precio
-        tk.Label(card, text=f"${float(producto['precio']):,.0f}", font=('Inter', 12, 'bold'),
+                bg=self.COLORES['fondo_card'], wraplength=420).pack(pady=(10, 10), padx=20)
+
+        # Categoría
+        categoria = producto.get('categoria', 'General')
+        tk.Label(card, text=f"📁 {categoria}", font=('Inter', 11),
                 fg=self.COLORES['acento_dorado'],
-                bg=self.COLORES['fondo_card']).pack(pady=3)
-        
+                bg=self.COLORES['fondo_card']).pack(pady=6, padx=20)
+
+        # Separador visual
+        tk.Frame(card, bg=self.COLORES['acento_dorado'], height=2).pack(fill=tk.X, pady=8, padx=15)
+
+        # Precio (destacado)
+        precio_frame = tk.Frame(card, bg=self.COLORES['fondo_card'])
+        precio_frame.pack(pady=8, padx=20, fill=tk.X)
+
+        tk.Label(precio_frame, text="Precio:", font=('Inter', 10),
+                fg=self.COLORES['texto_secundario'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.LEFT)
+
+        tk.Label(precio_frame, text=f"${float(producto['precio']):,.0f}", font=('Inter', 13, 'bold'),
+                fg=self.COLORES['acento_dorado'],
+                bg=self.COLORES['fondo_card']).pack(side=tk.RIGHT)
+
         # Botón Agregar
-        tk.Button(card, text="Agregar", bg=self.COLORES['verde_success'],
-                 fg='white', font=('Inter', 9, 'bold'), relief='flat', padx=10, pady=8,
-                 command=lambda: self._agregar_producto_custom_al_carrito(producto)).pack(fill=tk.X, padx=10, pady=(3, 10))
+        tk.Button(card, text="➕ Agregar al Carrito", bg=self.COLORES['verde_success'],
+                 fg='white', font=('Inter', 11, 'bold'), relief='flat', 
+                 padx=15, pady=12,
+                 command=lambda: self._agregar_producto_custom_al_carrito(producto)).pack(fill=tk.X, padx=18, pady=(10, 14))
     
     def _agregar_al_carrito(self, item):
         """Agregar item al carrito"""
         self.pedido.agregar_item(item.nombre, item.precio, 1)
+        self._actualizar_carrito()
         self._mostrar_notificacion(f"✓ {item.nombre} agregado")
     
     def _agregar_producto_custom_al_carrito(self, producto):
         """Agregar producto personalizado al carrito"""
         self.pedido.agregar_item(producto['nombre'], float(producto['precio']), 1)
+        self._actualizar_carrito()
         self._mostrar_notificacion(f"✓ {producto['nombre']} agregado")
     
     def _mostrar_notificacion(self, mensaje):
-        """Mostrar notificación temporal"""
-        notif = tk.Toplevel(self.ventana)
-        notif.configure(bg=self.COLORES['verde_success'])
-        notif.geometry("300x50")
-        notif.attributes('-alpha', 0.9)
+        """Mostrar notificación temporal dentro de la ventana, esquina superior derecha"""
+        # Crear frame de notificación dentro de la ventana principal
+        notif_frame = tk.Frame(self.ventana, bg=self.COLORES['verde_success'], height=60)
         
-        tk.Label(notif, text=mensaje, font=('Inter', 10, 'bold'),
+        # Contenedor con padding
+        container = tk.Frame(notif_frame, bg=self.COLORES['verde_success'])
+        container.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
+        
+        tk.Label(container, text=mensaje, font=('Inter', 11, 'bold'),
                 fg='white', bg=self.COLORES['verde_success']).pack(expand=True)
         
-        notif.update_idletasks()
-        x = self.ventana.winfo_x() + self.ventana.winfo_width() - 320
-        y = self.ventana.winfo_y() + 20
-        notif.geometry(f"+{x}+{y}")
+        # Posicionar en esquina superior derecha de la ventana
+        notif_frame.place(x=self.ventana.winfo_width() - 370, y=10, width=350, height=60)
         
-        notif.after(2000, notif.destroy)
+        # Auto-cerrar después de 2 segundos
+        self.ventana.after(2000, notif_frame.destroy)
     
     def _crear_tab_carrito(self, parent):
         """Pestaña del carrito con todos los items"""
@@ -513,20 +595,18 @@ class InterfazRestaurante:
         entry_cliente = tk.Entry(ventana, font=('Inter', 11), width=30)
         entry_cliente.pack(pady=10, padx=20)
         
-        # Método de pago
+        # Método de pago - con estilo moderno
         tk.Label(ventana, text="Método de Pago:", font=('Inter', 11),
                 fg=self.COLORES['texto_principal'],
                 bg=self.COLORES['fondo_principal']).pack(pady=(20, 10), padx=20, anchor=tk.W)
         
-        pago_frame = tk.Frame(ventana, bg=self.COLORES['fondo_principal'])
-        pago_frame.pack(padx=20)
-        
         metodo_var = tk.StringVar(value="Efectivo")
-        for metodo in ["Efectivo", "Tarjeta Crédito", "Tarjeta Débito", "Transferencia"]:
-            tk.Radiobutton(pago_frame, text=metodo, variable=metodo_var, value=metodo,
-                          bg=self.COLORES['fondo_principal'],
-                          fg=self.COLORES['texto_principal'],
-                          selectcolor=self.COLORES['acento_dorado']).pack(anchor=tk.W)
+        metodos = ["Efectivo", "Tarjeta Crédito", "Tarjeta Débito", "Transferencia"]
+        
+        combo_pago = ttk.Combobox(ventana, textvariable=metodo_var, values=metodos, 
+                                 state="readonly", width=30, font=('Inter', 10))
+        combo_pago.pack(pady=10, padx=20)
+        combo_pago.current(0)
         
         # Botones
         btn_frame = tk.Frame(ventana, bg=self.COLORES['fondo_principal'])
@@ -593,13 +673,9 @@ class InterfazRestaurante:
         def imprimir_linux():
             self._imprimir_factura_linux(cliente, metodo_pago, descuento)
         
-        tk.Button(btn_frame, text="🖨️ Imprimir (Linux)", bg=self.COLORES['verde_success'],
+        tk.Button(btn_frame, text="🖨️ Imprimir", bg=self.COLORES['verde_success'],
                  fg='white', font=('Inter', 10, 'bold'), relief='flat', padx=15, pady=10,
                  command=imprimir_linux).pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(btn_frame, text="💾 Guardar PDF", bg=self.COLORES['acento_dorado'],
-                 fg='black', font=('Inter', 10, 'bold'), relief='flat', padx=15, pady=10,
-                 command=lambda: self._guardar_factura(cliente, metodo_pago, descuento)).pack(side=tk.LEFT, padx=5)
         
         tk.Button(btn_frame, text="Cerrar", bg=self.COLORES['rojo_danger'],
                  fg='white', font=('Inter', 10, 'bold'), relief='flat', padx=15, pady=10,
@@ -607,13 +683,14 @@ class InterfazRestaurante:
     
     def _generar_contenido_factura(self, cliente, metodo_pago, descuento):
         """Generar contenido de factura"""
-        subtotal = self.pedido.calcular_total()
-        itbms = subtotal * 0.19
-        total = subtotal + itbms - descuento
-        
-        fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
-        
-        contenido = f"""
+        try:
+            subtotal = self.pedido.calcular_total()
+            itbms = subtotal * 0.19
+            total = subtotal + itbms - descuento
+            
+            fecha = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+            
+            contenido = f"""
 {'='*50}
                     FACTURA
 {'='*50}
@@ -625,13 +702,13 @@ Cliente: {cliente}
 ITEMS:
 {'-'*50}
 """
-        for item in self.pedido.items:
-            cantidad = item['cantidad']
-            precio = item['precio']
-            subtotal_item = precio * cantidad
-            contenido += f"{item['nombre']:<30} x{cantidad:>2}  ${subtotal_item:>8,.0f}\n"
-        
-        contenido += f"""
+            for item in self.pedido.items:
+                cantidad = item['cantidad']
+                precio = item['precio']
+                subtotal_item = precio * cantidad
+                contenido += f"{item['nombre']:<30} x{cantidad:>2}  ${subtotal_item:>8,.0f}\n"
+            
+            contenido += f"""
 {'-'*50}
 Subtotal:          ${subtotal:>10,.0f}
 ITBMS (19%):       ${itbms:>10,.0f}
@@ -646,35 +723,18 @@ Método de Pago: {metodo_pago}
          Gracias por su compra
 {'='*50}
 """
-        return contenido
+            return contenido
+        except Exception as e:
+            return f"Error al generar factura: {str(e)}"
     
     def _imprimir_factura_linux(self, cliente, metodo_pago, descuento):
-        """Imprimir factura en Linux"""
+        """Abrir diálogo de impresión tipo Windows"""
         try:
-            # Detectar impresoras disponibles
-            resultado = subprocess.run(['lpstat', '-p', '-d'], capture_output=True, text=True)
-            
-            if "No such file or directory" in resultado.stderr or resultado.returncode != 0:
-                messagebox.showinfo("Info", "Sistema Linux no detectado.\nFunción solo disponible en Linux.")
-                return
-            
-            # Crear archivo temporal
             contenido = self._generar_contenido_factura(cliente, metodo_pago, descuento)
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-                f.write(contenido)
-                temp_file = f.name
-            
-            # Imprimir con lp
-            subprocess.run(['lp', temp_file], check=True)
-            messagebox.showinfo("Éxito", "Factura enviada a imprimir")
-            
-            os.unlink(temp_file)
-        
-        except FileNotFoundError:
-            messagebox.showerror("Error", "Sistema Linux no disponible")
+            # Usar el módulo separado de diálogo de impresión
+            DialogoImpresion(self.ventana, self.COLORES, contenido, cliente)
         except Exception as e:
-            messagebox.showerror("Error de Impresión", str(e))
+            messagebox.showerror("❌ Error de Impresión", f"Error: {str(e)}")
     
     def _guardar_factura(self, cliente, metodo_pago, descuento):
         """Guardar factura como texto"""
