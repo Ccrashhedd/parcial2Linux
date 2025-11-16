@@ -165,6 +165,10 @@ class Menu:
             MenuItem("3", "Tabla de Quesos", 25000, "Entradas", "Selección de quesos nacionales e importados"),
             MenuItem("4", "Alitas Buffalo", 18000, "Entradas", "8 alitas picantes con salsa ranch"),
             MenuItem("5", "Nachos Supremos", 20000, "Entradas", "Con guacamole, pico de gallo y queso derretido"),
+            MenuItem("49", "Tabla de Embutidos", 28000, "Entradas", "Jamón serrano, salami y quesos variados"),
+            MenuItem("50", "Camarones al Ajillo", 22000, "Entradas", "Camarones frescos con ajo y mantequilla"),
+            MenuItem("51", "Tabla de Crudités", 16000, "Entradas", "Vegetales frescos con dips caseros"),
+            MenuItem("52", "Tabla Mixta Premium", 45000, "Entradas", "Quesos, embutidos, camarones y vegetales"),
             
             # PLATOS PRINCIPALES
             MenuItem("6", "Hamburguesa Gourmet", 28000, "Platos Principales", "Carne angus, queso brie, rúgula y tomate"),
@@ -177,12 +181,22 @@ class Menu:
             MenuItem("13", "Paella Valenciana", 35000, "Platos Principales", "Arroz con mariscos y pollo"),
             MenuItem("14", "Pasta Carbonara", 22000, "Platos Principales", "Pasta con bacon, crema y parmesano"),
             MenuItem("15", "Filete de Pescado", 30000, "Platos Principales", "Con salsa de limón y vegetales"),
+            MenuItem("53", "Steak Argentino", 50000, "Platos Principales", "500g de carne de res premium"),
+            MenuItem("54", "Costillas BBQ", 40000, "Platos Principales", "Costillas a la parrilla con salsa BBQ"),
+            MenuItem("55", "Pechuga Rellena", 32000, "Platos Principales", "Pechuga rellena de jamón y queso"),
+            MenuItem("56", "Camarones a la Criolla", 36000, "Platos Principales", "Camarones en salsa de cebolla y tomate"),
+            MenuItem("57", "Robalo a la Sal", 42000, "Platos Principales", "Pescado entero cocido en sal marina"),
+            MenuItem("58", "Fettuccine Alfredo", 26000, "Platos Principales", "Pasta fresca con salsa de crema y queso"),
+            MenuItem("59", "Ravioles de Ricotta", 28000, "Platos Principales", "Ravioles caseros con salsa boloñesa"),
             
             # ENSALADAS
             MenuItem("16", "Ensalada César", 18000, "Ensaladas", "Lechuga, pollo, crutones y parmesano"),
             MenuItem("17", "Ensalada Griega", 16000, "Ensaladas", "Tomate, aceitunas, queso feta y orégano"),
             MenuItem("18", "Ensalada de Salmón", 22000, "Ensaladas", "Mix de verdes con salmón ahumado"),
             MenuItem("19", "Ensalada Tropical", 15000, "Ensaladas", "Frutas frescas con vinagreta de mango"),
+            MenuItem("60", "Ensalada de Remolacha", 17000, "Ensaladas", "Remolacha, queso de cabra y nueces"),
+            MenuItem("61", "Ensalada de Espinacas", 16000, "Ensaladas", "Espinacas frescas, fresas y almendras"),
+            MenuItem("62", "Ensalada Caprese", 19000, "Ensaladas", "Tomate, mozzarella fresca y albahaca"),
             
             # BEBIDAS SIN ALCOHOL
             MenuItem("20", "Jugo Natural", 8000, "Bebidas", "Naranja, manzana, fresa o mango"),
@@ -193,6 +207,10 @@ class Menu:
             MenuItem("25", "Café Americano", 6000, "Bebidas", "Café premium colombiano"),
             MenuItem("26", "Cappuccino", 8000, "Bebidas", "Espresso con leche vaporizada"),
             MenuItem("27", "Té Chai Latte", 9000, "Bebidas", "Té especiado con leche y canela"),
+            MenuItem("63", "Batido de Fresa", 10000, "Bebidas", "Fresas frescas con leche y hielo"),
+            MenuItem("64", "Horchata", 6000, "Bebidas", "Bebida tradicional con arroz"),
+            MenuItem("65", "Frappé de Vainilla", 11000, "Bebidas", "Café congelado con crema"),
+            MenuItem("66", "Té Helado", 7000, "Bebidas", "Té refrescante con limón"),
             
             # BEBIDAS CON ALCOHOL
             MenuItem("28", "Cerveza Nacional", 8000, "Bebidas Alcohólicas", "Poker, Águila o Club Colombia"),
@@ -202,6 +220,10 @@ class Menu:
             MenuItem("32", "Mojito Clásico", 18000, "Bebidas Alcohólicas", "Ron, hierbabuena, limón y soda"),
             MenuItem("33", "Piña Colada", 20000, "Bebidas Alcohólicas", "Ron, piña, coco y hielo"),
             MenuItem("34", "Margarita", 19000, "Bebidas Alcohólicas", "Tequila, triple sec y limón"),
+            MenuItem("67", "Daiquirí", 18000, "Bebidas Alcohólicas", "Ron blanco, limón y azúcar"),
+            MenuItem("68", "Caipirinha", 16000, "Bebidas Alcohólicas", "Cachaça, limón fresco y azúcar"),
+            MenuItem("69", "Cosmopolitan", 20000, "Bebidas Alcohólicas", "Vodka, naranja y cranberry"),
+            MenuItem("70", "Cuba Libre", 15000, "Bebidas Alcohólicas", "Ron, Coca-Cola y limón"),
             
             # POSTRES
             MenuItem("35", "Tiramisú", 16000, "Postres", "Clásico postre italiano con café"),
@@ -212,6 +234,11 @@ class Menu:
             MenuItem("40", "Helado Artesanal", 8000, "Postres", "Vainilla, chocolate o fresa - 2 bolas"),
             MenuItem("41", "Torta de Chocolate", 13000, "Postres", "Torta húmeda con ganache"),
             MenuItem("42", "Crème Brûlée", 15000, "Postres", "Crema quemada con azúcar caramelizada"),
+            MenuItem("71", "Mousse de Chocolate", 12000, "Postres", "Mousse ligero y delicioso"),
+            MenuItem("72", "Pavlova", 14000, "Postres", "Merengue crujiente con frutas"),
+            MenuItem("73", "Fresa con Champaña", 18000, "Postres", "Fresas frescas con champaña"),
+            MenuItem("74", "Sorbet de Limón", 9000, "Postres", "Granizado refrescante de limón"),
+            MenuItem("75", "Churros con Chocolate", 11000, "Postres", "Churros recién hechos con chocolate caliente"),
             
             # ACOMPAÑAMIENTOS
             MenuItem("43", "Papas Francesas", 8000, "Acompañamientos", "Papas crujientes con sal de mar"),
@@ -220,6 +247,11 @@ class Menu:
             MenuItem("46", "Vegetales Grillados", 10000, "Acompañamientos", "Mix de vegetales de temporada"),
             MenuItem("47", "Pan de Ajo", 7000, "Acompañamientos", "Pan tostado con mantequilla y ajo"),
             MenuItem("48", "Ensalada Mixta", 8000, "Acompañamientos", "Lechuga, tomate y cebolla"),
+            MenuItem("76", "Macarrones con Queso", 9000, "Acompañamientos", "Pasta con queso cheddar"),
+            MenuItem("77", "Puré de Papa", 7000, "Acompañamientos", "Cremoso puré casero"),
+            MenuItem("78", "Papas al Horno", 8000, "Acompañamientos", "Con cáscara, crema agria y cebollín"),
+            MenuItem("79", "Plátano Maduro Frito", 6000, "Acompañamientos", "Plátano caramelizado"),
+            MenuItem("80", "Yuca Frita", 8000, "Acompañamientos", "Yuca crujiente con salsa de ajo"),
         ]
         for item in items_ejemplo:
             self.items[item.id] = item
