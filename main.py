@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Aplicación principal - Sistema Operativo Parcial 2
-POS (Punto de Venta) para Restaurante con interfaz gráfica Tkinter
+Aplicacion principal - Sistema Operativo Parcial 2
+POS (Punto de Venta) para Restaurante con interfaz grafica Tkinter
+Optimizado para Linux con soporte de impresion CUPS
 """
 
 import tkinter as tk
@@ -11,24 +12,25 @@ import os
 # Agregar el directorio actual al path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from interfaz_restaurante import InterfazRestaurante
+# Usar interfaz v2 mejorada
+from interfaz_restaurante_v2 import InterfazRestaurante
 
 
 def main():
-    """Función principal que inicia la aplicación"""
+    """Funcion principal que inicia la aplicacion"""
     try:
-        # Crear e inicializar la interfaz del POS (ahora crea su propia ventana)
+        # Crear e inicializar la interfaz del POS
         app = InterfazRestaurante()
         
-        # Ejecutar la aplicación
+        # Ejecutar la aplicacion
         app.ejecutar()
         
     except ImportError as e:
-        print(f"❌ Error de importación: {e}", file=sys.stderr)
-        print("Asegúrate de instalar las dependencias con: pip install -r requirements.txt", file=sys.stderr)
+        print(f"Error de importacion: {e}", file=sys.stderr)
+        print("Asegurate de instalar las dependencias con: pip install -r requirements.txt", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error al ejecutar la aplicación: {e}", file=sys.stderr)
+        print(f"Error al ejecutar la aplicacion: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -747,6 +747,10 @@ class InterfazRestaurante:
         
         self._mostrar_ventana_checkout_completa()
     
+    def _mostrar_ventana_checkout_completa(self):
+        """Mostrar ventana única de checkout con todos los datos"""
+        self._mostrar_ventana_checkout()
+    
     def _agregar_item_directo(self, item):
         """Método temporal para agregar item"""
         pass
