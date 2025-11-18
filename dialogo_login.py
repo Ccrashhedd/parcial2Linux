@@ -95,8 +95,15 @@ class DialogoLogin:
             usuario = entry_usuario.get().strip()
             password = entry_password.get().strip()
             
-            # Credenciales correctas
-            if usuario == "admin" and password == "admin123":
+            # Verificar credenciales desde la base de datos
+            from modelo_restaurante import Menu
+            menu = Menu()
+            usuario_db = menu.verificar_login(usuario, password)
+            
+            if usuario_db:
+                # Login exitoso
+                print(f"✓ Login exitoso: {usuario_db['nombre']}")
+                
                 # Limpiar entradas
                 entry_usuario.delete(0, tk.END)
                 entry_password.delete(0, tk.END)

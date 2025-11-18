@@ -3,8 +3,9 @@ modelo_restaurante.py - Clases de modelo de datos para el sistema POS de restaur
 """
 
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Optional
 import uuid
+from conexionDB import db_manager
 
 
 class MenuItem:
@@ -150,14 +151,59 @@ class Factura:
 
 
 class Menu:
-    """Almacena y gestiona los items del menú"""
+    """Almacena y gestiona los items del menú desde la base de datos"""
     
     def __init__(self):
         self.items: Dict[str, MenuItem] = {}
-        self._cargar_menu_ejemplo()
+        self._cargar_menu_desde_db()
+    
+    def _cargar_menu_desde_db(self):
+        """Carga el menú desde la base de datos PostgreSQL"""
+        try:
+            # Obtener todos los productos de la base de datos
+            query = """
+                SELECT idProducto, nombre, precio, descripcion
+                FROM PRODUCTO
+                ORDER BY nombre
+            """
+            productos = db_manager.ejecutar_query(query, fetch=True)
+            
+            if productos:
+                for producto in productos:
+                    id_producto, nombre, precio, descripcion = producto
+                    # Determinar categoría basada en el tipo de producto
+                    categoria = self._obtener_categoria_por_nombre(nombre)
+                    item = MenuItem(id_producto, nombre, float(precio), categoria, descripcion)
+                    self.items[id_producto] = item
+                print(f"✓ Cargados {len(self.items)} productos desde la base de datos")
+            else:
+                print("⚠ No se encontraron productos en la base de datos")
+                self._cargar_menu_ejemplo()
+        except Exception as e:
+            print(f"✗ Error al cargar menú desde BD: {e}")
+            print("  Cargando menú de ejemplo...")
+            self._cargar_menu_ejemplo()
+    
+    def _obtener_categoria_por_nombre(self, nombre: str) -> str:
+        """Determina la categoría del producto basándose en su nombre"""
+        # Bebidas
+        if any(palabra in nombre.lower() for palabra in ['café', 'té', 'jugo', 'coca', 'agua', 'cerveza', 'vino', 'mojito', 'limonada', 'batido', 'smoothie', 'cappuccino', 'horchata', 'frappé']):
+            return "Bebidas"
+        # Postres
+        elif any(palabra in nombre.lower() for palabra in ['tiramisú', 'cheesecake', 'brownie', 'flan', 'leches', 'helado', 'torta', 'crème', 'mousse', 'pavlova', 'churros', 'sorbet']):
+            return "Postres"
+        # Ensaladas
+        elif 'ensalada' in nombre.lower():
+            return "Ensaladas"
+        # Acompañamientos
+        elif any(palabra in nombre.lower() for palabra in ['papas', 'arroz', 'vegetales', 'pan', 'macarrones', 'puré', 'plátano', 'yuca']):
+            return "Acompañamientos"
+        # Por defecto: Platos Principales
+        else:
+            return "Platos Principales"
     
     def _cargar_menu_ejemplo(self):
-        """Carga un menú completo de restaurante premium"""
+        """Carga un menú completo de restaurante premium (fallback)"""
         items_ejemplo = [
             # ENTRADAS
             MenuItem("1", "Bruschetta Italiana", 15000, "Entradas", "Pan tostado con tomate, albahaca y mozzarella"),
@@ -301,6 +347,532 @@ class Menu:
     def obtener_categorias(self) -> List[str]:
         """Obtener lista de categorías únicas"""
         return sorted(set(item.categoria for item in self.items.values()))
+    
+    def crear_producto(self, nombre: str, precio: float, tipo: str, descripcion: str = "", imagen: str = "") -> str:
+        """
+        Crea un nuevo producto en la base de datos
+        
+        Returns:
+            ID del producto creado o None si falla
+        """
+        try:
+            from datetime import datetime
+            
+            # Generar ID único para el producto
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            id_producto = f"PROD{timestamp}{nombre[:10].replace(' ', '')}"
+            
+            # Obtener el ID del tipo de comida
+            query_tipo = "SELECT idTipo FROM TIPO_COMIDA WHERE nombre = %s"
+            resultado = db_manager.ejecutar_query_uno(query_tipo, (tipo,))
+            
+            if not resultado:
+                print(f"✗ Tipo de comida '{tipo}' no encontrado")
+                return None
+            
+            id_tipo = resultado[0]
+            
+            # Insertar producto
+            query_producto = """
+                INSERT INTO PRODUCTO (idProducto, nombre, precio, imagen, descripcion)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            db_manager.ejecutar_query(query_producto, (id_producto, nombre, precio, imagen, descripcion), fetch=False)
+            
+            # Agregar a todos los días del menú (disponible siempre)
+            query_menu = """
+                INSERT INTO MENU_PRODUCTO (idProducto, idTipo, idDiaMenu, activo)
+                SELECT %s, %s, idDiaMenu, TRUE
+                FROM MENU_DIA
+            """
+            db_manager.ejecutar_query(query_menu, (id_producto, id_tipo), fetch=False)
+            
+            print(f"✓ Producto '{nombre}' creado con ID: {id_producto}")
+            return id_producto
+            
+        except Exception as e:
+            print(f"✗ Error al crear producto: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def actualizar_producto(self, id_producto: str, nombre: str, precio: float, descripcion: str = "", imagen: str = "") -> bool:
+        """
+        Actualiza un producto existente en la base de datos
+        
+        Returns:
+            True si se actualizó correctamente, False si falla
+        """
+        try:
+            query = """
+                UPDATE PRODUCTO
+                SET nombre = %s, precio = %s, descripcion = %s, imagen = %s
+                WHERE idProducto = %s
+            """
+            db_manager.ejecutar_query(query, (nombre, precio, descripcion, imagen, id_producto), fetch=False)
+            
+            print(f"✓ Producto {id_producto} actualizado")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Error al actualizar producto: {e}")
+            return False
+    
+    def eliminar_producto(self, id_producto: str) -> bool:
+        """
+        Elimina un producto de la base de datos
+        
+        Returns:
+            True si se eliminó correctamente, False si falla
+        """
+        try:
+            # Primero eliminar referencias en MENU_PRODUCTO
+            query_menu = "DELETE FROM MENU_PRODUCTO WHERE idProducto = %s"
+            db_manager.ejecutar_query(query_menu, (id_producto,), fetch=False)
+            
+            # Eliminar referencias en EXCEPCION_PRODUCTO si existen
+            query_exc = "DELETE FROM EXCEPCION_PRODUCTO WHERE idProducto = %s"
+            db_manager.ejecutar_query(query_exc, (id_producto,), fetch=False)
+            
+            # Finalmente eliminar el producto
+            query_prod = "DELETE FROM PRODUCTO WHERE idProducto = %s"
+            db_manager.ejecutar_query(query_prod, (id_producto,), fetch=False)
+            
+            print(f"✓ Producto {id_producto} eliminado")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Error al eliminar producto: {e}")
+            return False
+    
+    def obtener_todos_productos(self) -> List[Dict]:
+        """
+        Obtiene TODOS los productos de la base de datos sin límite
+        
+        Returns:
+            Lista de diccionarios con todos los productos
+        """
+        try:
+            # Query sin LIMIT para traer TODOS los productos
+            query = """
+                SELECT idProducto, nombre, precio, imagen, descripcion
+                FROM PRODUCTO
+                ORDER BY nombre ASC
+            """
+            productos = db_manager.ejecutar_query(query, fetch=True)
+            
+            resultado = []
+            if productos:
+                print(f"✓ Se obtuvieron {len(productos)} productos de la base de datos")
+                for prod in productos:
+                    resultado.append({
+                        'id_producto': prod[0],
+                        'nombre': prod[1],
+                        'precio': float(prod[2]),
+                        'imagen': prod[3],
+                        'descripcion': prod[4]
+                    })
+            else:
+                print("⚠ No se encontraron productos en la base de datos")
+            
+            return resultado
+            
+        except Exception as e:
+            print(f"✗ Error al obtener productos: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def obtener_tipo_producto(self, id_producto: str) -> str:
+        """
+        Obtiene el tipo de comida de un producto
+        
+        Returns:
+            Nombre del tipo de comida o None
+        """
+        try:
+            query = """
+                SELECT tc.nombre
+                FROM MENU_PRODUCTO mp
+                JOIN TIPO_COMIDA tc ON mp.idTipo = tc.idTipo
+                WHERE mp.idProducto = %s
+                LIMIT 1
+            """
+            resultado = db_manager.ejecutar_query_uno(query, (id_producto,))
+            
+            return resultado[0] if resultado else None
+            
+        except Exception as e:
+            print(f"✗ Error al obtener tipo de producto: {e}")
+            return None
+    
+    def obtener_productos_en_menu_dia(self, dia_id: int) -> List[Dict]:
+        """
+        Obtiene los productos asignados a un día específico
+        
+        Returns:
+            Lista de productos del menú del día
+        """
+        try:
+            query = """
+                SELECT p.idProducto, p.nombre, p.precio, tc.nombre as tipo
+                FROM MENU_PRODUCTO mp
+                JOIN PRODUCTO p ON mp.idProducto = p.idProducto
+                JOIN TIPO_COMIDA tc ON mp.idTipo = tc.idTipo
+                WHERE mp.idDiaMenu = %s AND mp.activo = TRUE
+                ORDER BY tc.idTipo, p.nombre
+            """
+            productos = db_manager.ejecutar_query(query, (dia_id,), fetch=True)
+            
+            resultado = []
+            if productos:
+                for prod in productos:
+                    resultado.append({
+                        'id_producto': prod[0],
+                        'nombre': prod[1],
+                        'precio': float(prod[2]),
+                        'tipo': prod[3]
+                    })
+            
+            return resultado
+            
+        except Exception as e:
+            print(f"✗ Error al obtener productos del menú del día: {e}")
+            return []
+    
+    def agregar_producto_a_menu_dia(self, id_producto: str, tipo: str, dia_id: int) -> bool:
+        """
+        Agrega un producto al menú de un día específico
+        
+        Returns:
+            True si se agregó correctamente
+        """
+        try:
+            # Obtener ID del tipo
+            query_tipo = "SELECT idTipo FROM TIPO_COMIDA WHERE nombre = %s"
+            resultado = db_manager.ejecutar_query_uno(query_tipo, (tipo,))
+            
+            if not resultado:
+                print(f"✗ Tipo '{tipo}' no encontrado")
+                return False
+            
+            id_tipo = resultado[0]
+            
+            # Verificar si ya existe
+            query_existe = """
+                SELECT 1 FROM MENU_PRODUCTO 
+                WHERE idProducto = %s AND idTipo = %s AND idDiaMenu = %s
+            """
+            existe = db_manager.ejecutar_query_uno(query_existe, (id_producto, id_tipo, dia_id))
+            
+            if existe:
+                # Actualizar a activo si ya existe
+                query_update = """
+                    UPDATE MENU_PRODUCTO 
+                    SET activo = TRUE
+                    WHERE idProducto = %s AND idTipo = %s AND idDiaMenu = %s
+                """
+                db_manager.ejecutar_query(query_update, (id_producto, id_tipo, dia_id), fetch=False)
+            else:
+                # Insertar nuevo registro
+                query_insert = """
+                    INSERT INTO MENU_PRODUCTO (idProducto, idTipo, idDiaMenu, activo)
+                    VALUES (%s, %s, %s, TRUE)
+                """
+                db_manager.ejecutar_query(query_insert, (id_producto, id_tipo, dia_id), fetch=False)
+            
+            print(f"✓ Producto agregado al menú del día {dia_id}")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Error al agregar producto al menú: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def quitar_producto_de_menu_dia(self, id_producto: str, dia_id: int) -> bool:
+        """
+        Quita un producto del menú de un día específico
+        
+        Returns:
+            True si se quitó correctamente
+        """
+        try:
+            query = """
+                DELETE FROM MENU_PRODUCTO
+                WHERE idProducto = %s AND idDiaMenu = %s
+            """
+            db_manager.ejecutar_query(query, (id_producto, dia_id), fetch=False)
+            
+            print(f"✓ Producto quitado del menú del día {dia_id}")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Error al quitar producto del menú: {e}")
+            return False
+    
+    def obtener_menu_del_dia(self, dia_semana: int = None, tipo_comida: str = None) -> List[Dict]:
+        """
+        Obtiene el menú del día desde la base de datos
+        
+        Args:
+            dia_semana: 1=Lunes, 2=Martes, ..., 7=Domingo (None = día actual)
+            tipo_comida: Nombre del tipo ("Desayuno", "Almuerzo", etc.) (None = todos)
+        
+        Returns:
+            Lista de diccionarios con productos del menú del día
+        """
+        try:
+            # Si no se especifica día, usar el día actual
+            if dia_semana is None:
+                from datetime import datetime
+                dia_semana = datetime.now().isoweekday()  # 1=Lunes, 7=Domingo
+            
+            # Construir query con JOIN a TIPO_COMIDA para obtener el nombre
+            query = """
+                SELECT DISTINCT p.idProducto, p.nombre, p.precio, p.descripcion, tc.nombre as tipo, tc.idTipo
+                FROM PRODUCTO p
+                INNER JOIN MENU_PRODUCTO mp ON p.idProducto = mp.idProducto
+                INNER JOIN TIPO_COMIDA tc ON mp.idTipo = tc.idTipo
+                WHERE mp.idDiaMenu = %s AND mp.activo = TRUE
+            """
+            params = [dia_semana]
+            
+            if tipo_comida is not None and tipo_comida != "Todos":
+                query += " AND tc.nombre = %s"
+                params.append(tipo_comida)
+            
+            query += " ORDER BY tc.idTipo, p.nombre"
+            
+            productos = db_manager.ejecutar_query(query, tuple(params), fetch=True)
+            
+            menu_items = []
+            if productos:
+                for producto in productos:
+                    id_producto, nombre, precio, descripcion, tipo, id_tipo = producto
+                    menu_items.append({
+                        'id_producto': id_producto,
+                        'nombre': nombre,
+                        'precio': float(precio),
+                        'descripcion': descripcion,
+                        'tipo': tipo
+                    })
+            
+            return menu_items
+        except Exception as e:
+            print(f"✗ Error al obtener menú del día: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def obtener_tipos_comida(self) -> List[str]:
+        """Obtiene los nombres de tipos de comida desde la base de datos"""
+        try:
+            query = "SELECT nombre FROM TIPO_COMIDA ORDER BY idTipo"
+            tipos = db_manager.ejecutar_query(query, fetch=True)
+            
+            return [tipo[0] for tipo in tipos] if tipos else []
+        except Exception as e:
+            print(f"✗ Error al obtener tipos de comida: {e}")
+            return ["Desayuno", "Almuerzo", "Cena", "Bebidas", "Postres"]
+    
+    def verificar_login(self, usuario: str, contrasena: str) -> Optional[Dict]:
+        """
+        Verifica las credenciales de login desde la base de datos
+        
+        Returns:
+            Diccionario con datos del usuario si login exitoso, None si falla
+        """
+        try:
+            query = """
+                SELECT idUsuario, usuario, nombre
+                FROM USUARIO
+                WHERE usuario = %s AND contrasen = %s
+            """
+            resultado = db_manager.ejecutar_query_uno(query, (usuario, contrasena))
+            
+            if resultado:
+                return {
+                    "id": resultado[0],
+                    "usuario": resultado[1],
+                    "nombre": resultado[2]
+                }
+            return None
+        except Exception as e:
+            print(f"✗ Error al verificar login: {e}")
+            # Fallback para desarrollo
+            if usuario == "admin" and contrasena == "123":
+                return {"id": "USR001", "usuario": "admin", "nombre": "Administrador"}
+            return None
+    
+    def obtener_excepciones_activas(self, fecha: str = None) -> List[Dict]:
+        """
+        Obtiene las excepciones de menú activas para una fecha
+        
+        Args:
+            fecha: Fecha en formato YYYY-MM-DD (None = hoy)
+        
+        Returns:
+            Lista de diccionarios con excepciones activas
+        """
+        try:
+            if fecha is None:
+                from datetime import datetime
+                fecha = datetime.now().strftime('%Y-%m-%d')
+            
+            query = """
+                SELECT idExcepcion, nombre, descripcion, descuento_porcentaje
+                FROM MENU_EXCEPCION
+                WHERE activo = TRUE
+                  AND fecha_inicio <= %s
+                  AND fecha_fin >= %s
+                ORDER BY descuento_porcentaje DESC
+            """
+            excepciones = db_manager.ejecutar_query(query, (fecha, fecha), fetch=True)
+            
+            resultado = []
+            if excepciones:
+                for exc in excepciones:
+                    resultado.append({
+                        "id": exc[0],
+                        "nombre": exc[1],
+                        "descripcion": exc[2],
+                        "descuento": float(exc[3])
+                    })
+            
+            return resultado
+        except Exception as e:
+            print(f"✗ Error al obtener excepciones: {e}")
+            return []
+    
+    def obtener_productos_con_descuento(self, id_excepcion: int = None) -> List[Dict]:
+        """
+        Obtiene productos con sus precios especiales de promoción
+        
+        Args:
+            id_excepcion: ID de la excepción (None = todas las activas hoy)
+        
+        Returns:
+            Lista de productos con precio original y precio especial
+        """
+        try:
+            from datetime import datetime
+            fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+            
+            if id_excepcion:
+                query = """
+                    SELECT p.idProducto, p.nombre, p.precio, 
+                           ep.precio_especial, me.descuento_porcentaje, me.nombre,
+                           tc.nombre as tipo
+                    FROM PRODUCTO p
+                    INNER JOIN EXCEPCION_PRODUCTO ep ON p.idProducto = ep.idProducto
+                    INNER JOIN MENU_EXCEPCION me ON ep.idExcepcion = me.idExcepcion
+                    LEFT JOIN MENU_PRODUCTO mp ON p.idProducto = mp.idProducto
+                    LEFT JOIN TIPO_COMIDA tc ON mp.idTipo = tc.idTipo
+                    WHERE me.idExcepcion = %s
+                      AND me.activo = TRUE
+                      AND me.fecha_inicio <= %s
+                      AND me.fecha_fin >= %s
+                    GROUP BY p.idProducto, p.nombre, p.precio, ep.precio_especial, 
+                             me.descuento_porcentaje, me.nombre, tc.nombre
+                    ORDER BY p.nombre
+                """
+                params = (id_excepcion, fecha_hoy, fecha_hoy)
+            else:
+                query = """
+                    SELECT p.idProducto, p.nombre, p.precio, 
+                           ep.precio_especial, me.descuento_porcentaje, me.nombre,
+                           tc.nombre as tipo
+                    FROM PRODUCTO p
+                    INNER JOIN EXCEPCION_PRODUCTO ep ON p.idProducto = ep.idProducto
+                    INNER JOIN MENU_EXCEPCION me ON ep.idExcepcion = me.idExcepcion
+                    LEFT JOIN MENU_PRODUCTO mp ON p.idProducto = mp.idProducto
+                    LEFT JOIN TIPO_COMIDA tc ON mp.idTipo = tc.idTipo
+                    WHERE me.activo = TRUE
+                      AND me.fecha_inicio <= %s
+                      AND me.fecha_fin >= %s
+                    GROUP BY p.idProducto, p.nombre, p.precio, ep.precio_especial,
+                             me.descuento_porcentaje, me.nombre, tc.nombre
+                    ORDER BY me.descuento_porcentaje DESC, p.nombre
+                """
+                params = (fecha_hoy, fecha_hoy)
+            
+            productos = db_manager.ejecutar_query(query, params, fetch=True)
+            
+            resultado = []
+            if productos:
+                for prod in productos:
+                    resultado.append({
+                        "id_producto": prod[0],
+                        "nombre": prod[1],
+                        "precio_original": float(prod[2]),
+                        "precio_especial": float(prod[3]),
+                        "descuento": float(prod[4]),
+                        "promocion": prod[5],
+                        "tipo": prod[6] if prod[6] else "General"
+                    })
+            
+            return resultado
+        except Exception as e:
+            print(f"✗ Error al obtener productos con descuento: {e}")
+            return []
+    
+    def obtener_precio_producto(self, id_producto: str) -> Dict:
+        """
+        Obtiene el precio actual de un producto (con descuento si aplica)
+        
+        Returns:
+            Dict con precio_original, precio_final, tiene_descuento, descuento_porcentaje
+        """
+        try:
+            from datetime import datetime
+            fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+            
+            # Verificar si tiene descuento activo
+            query = """
+                SELECT p.precio, ep.precio_especial, me.descuento_porcentaje, me.nombre
+                FROM PRODUCTO p
+                LEFT JOIN EXCEPCION_PRODUCTO ep ON p.idProducto = ep.idProducto
+                LEFT JOIN MENU_EXCEPCION me ON ep.idExcepcion = me.idExcepcion
+                    AND me.activo = TRUE
+                    AND me.fecha_inicio <= %s
+                    AND me.fecha_fin >= %s
+                WHERE p.idProducto = %s
+                ORDER BY me.descuento_porcentaje DESC
+                LIMIT 1
+            """
+            resultado = db_manager.ejecutar_query_uno(query, (fecha_hoy, fecha_hoy, id_producto))
+            
+            if resultado:
+                precio_original = float(resultado[0])
+                precio_especial = float(resultado[1]) if resultado[1] else None
+                descuento = float(resultado[2]) if resultado[2] else 0
+                promocion = resultado[3] if resultado[3] else None
+                
+                return {
+                    "precio_original": precio_original,
+                    "precio_final": precio_especial if precio_especial else precio_original,
+                    "tiene_descuento": precio_especial is not None,
+                    "descuento_porcentaje": descuento,
+                    "promocion": promocion
+                }
+            
+            return {
+                "precio_original": 0,
+                "precio_final": 0,
+                "tiene_descuento": False,
+                "descuento_porcentaje": 0,
+                "promocion": None
+            }
+        except Exception as e:
+            print(f"✗ Error al obtener precio: {e}")
+            return {
+                "precio_original": 0,
+                "precio_final": 0,
+                "tiene_descuento": False,
+                "descuento_porcentaje": 0,
+                "promocion": None
+            }
 
 
 class PedidoRestaurante:

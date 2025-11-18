@@ -1,0 +1,14 @@
+# Dependencias del Sistema POS Restaurante
+# Actualizado: Noviembre 2025
+
+# Base de datos PostgreSQL
+psycopg2-binary==2.9.11
+
+# Compilador de aplicaciones
+pyinstaller==6.16.0
+
+# Utilidades de tipado
+typing-extensions==4.15.0
+
+# Interfaz gráfica (generalmente incluido con Python, pero por si acaso)
+# tkinter - viene con Python, no requiere instalación via pip
