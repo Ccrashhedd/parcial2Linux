@@ -1,14 +1,85 @@
 CREATE DATABASE IF NOT EXISTS parcial2;
 \c parcial2
 
+-- DROPS DE TABLAS Y PROCEDURES POR SEGURIDAD
+DROP TABLE IF EXISTS USUARIO;
+DROP TABLE IF EXISTS PRODUCTO;
+DROP TABLE IF EXISTS MENU;
+DROP PROCEDURE IF EXISTS trgInsIdProducto;
+DROP PROCEDURE IF EXISTS trUpdIdProducto;
+
 
 CREATE TABLE IF NOT EXISTS USUARIO (
-
-
+    idUsuario VARCHAR(25) PRIMARY KEY,
+    usuario VARCHAR(25) NOT NULL UNIQUE,
+    contrasen VARCHAR(30) NOT NULL UNIQUE,
+    nombre VARCHAR(50) NOT NULL UNIQUE
 );
 
 
 CREATE TABLE IF NOT EXISTS PRODUCTO (
-
-    
+    idProducto VARCHAR(30) PRIMARY KEY,
+    nombre VARCHAR(45) NOT NULL,
+    precio DECIMAL(10,2) NOT NULL,
+    imagen VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(150) NOT NULL,
+    CONTRAINT chk_precio CHECK precio (precio > 0)
 );
+
+
+CREATE TABLE IF NOT EXISTS TIPO_COMIDA (
+    idTipo INTEGER PRIMARY KEY,
+    nombre VARCHAR(25) NOT NULL,
+    ADD CONSTRAINT chk_id CHECK idMenu BETWEEN (1 AND 5)
+);
+
+INSERT INTO TIPO_COMIDA (idTipo, nombre) VALUES
+(1, 'Desayuno'),
+(2, 'Almuerzo'),
+(3, 'Cena'),
+(4, 'Bebidas'),
+(5, 'Postres');
+
+CREATE TABLE IF NOT EXISTS MENU_DIA (
+    idDiaMenu INTEGER PRIMARY KEY,
+    nombreDia VARCHAR(15) NOT NULL,
+    CONSTRAINT chk_idDiaMenu CHECK idDiaMenu BETWEEN (1 AND 7)
+)
+
+INSERT INTO MENU_DIA (idDiaMenu, nombreDia) VALUES
+(1, 'Lunes'),
+(2, 'Martes'),
+(3, 'Miercoles'),
+(4, 'Jueves'),
+(5, 'Viernes'),
+(6, 'Sabado'),
+(7, 'Domingo');
+
+
+-- TRIGGER PARA CREAR IDPRODUCTO AUTOMATICO
+
+CREATE TRIGGER trgInsIdProducto
+BEFORE INSERT ON PRODUCTO
+FOR EACH ROW
+DECLARE 
+    anno INTEGER;
+    
+BEGIN
+    SET ANNO AS EXTRACT(YEAR FROM CURRENT_DATE);
+
+    INSERT INTO PRODUCTO (idProducto) values (CONCAT('PROD', anno, new.nombre)); 
+
+END;
+
+
+CREATE TRIGGER trUpdIdProducto
+BEFORE UPDATE ON PRODUCTO
+FOR EACH ROW
+DECLARE 
+    anno INTEGER;
+    BEGIN
+    SET ANNO AS EXTRACT(YEAR FROM CURRENT_DATE);
+    UPDATE PRODUCTO SET idProducto = CONCAT('PROD', anno, new.nombre) WHERE idProducto = old.idProducto;
+END;
+
+
