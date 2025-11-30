@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS productos (
     nombre VARCHAR(255) NOT NULL,
     precio DECIMAL(10, 2) NOT NULL,
     descripcion TEXT,
-    imagen_path VARCHAR(500),
+    imagen_data BYTEA,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS productos (
 CREATE INDEX IF NOT EXISTS idx_nombre ON productos(nombre);
 
 -- Insertar datos de ejemplo
-INSERT INTO productos (nombre, precio, descripcion, imagen_path) VALUES
+INSERT INTO productos (nombre, precio, descripcion, imagen_data) VALUES
 ('Laptop Dell', 799.99, 'Laptop de 15 pulgadas con procesador Intel i7', NULL),
 ('Mouse Logitech', 25.50, 'Mouse inalámbrico ergonómico', NULL),
 ('Teclado Mecánico', 89.99, 'Teclado mecánico RGB 87 teclas', NULL),

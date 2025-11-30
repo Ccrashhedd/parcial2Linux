@@ -141,7 +141,8 @@ python3 main.py
 
 1. Haz clic en el botón **✨ NUEVO**
 2. Completa los campos: Nombre, Precio y Descripción
-3. Haz clic en **💾 GUARDAR**
+3. Si la imagen está en internet, usa el botón **🌐 URL** y pega la dirección (http/https). La aplicación guardará esa URL tal cual, sin copiar archivos temporales.
+4. Haz clic en **💾 GUARDAR**
 
 ### Editar un producto
 
@@ -180,7 +181,7 @@ python3 main.py
 | nombre | VARCHAR(255) | Nombre del producto |
 | precio | DECIMAL(10,2) | Precio del producto |
 | descripcion | TEXT | Descripción detallada |
-| imagen_path | VARCHAR(500) | Ruta de la imagen |
+| imagen_data | BYTEA | Datos de imagen comprimida |
 | fecha_creacion | TIMESTAMP | Fecha de creación |
 | fecha_actualizacion | TIMESTAMP | Fecha de última actualización |
 
@@ -239,8 +240,7 @@ dropdb -U postgres gestor_productos
 ## 📦 Dependencias
 
 - **psycopg2-binary** - Driver de PostgreSQL para Python
-- **Pillow** - Manejo de imágenes en la interfaz y vistas previas
-- **weasyprint** - Conversión HTML→PDF usada como respaldo cuando GTK no está disponible
+- **Pillow** - Manejo y compresión de imágenes en la interfaz
 
 ## 🔐 Seguridad
 

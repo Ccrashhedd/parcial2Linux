@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 import logging
 import sys
+import base64
 
 try:
     import gi  # type: ignore
@@ -268,6 +269,30 @@ if HAS_GTK:
             cr.restore()
 
         def _load_pixbuf(self, producto):
+            """Carga imagen desde imagen_data (base64) o imagen_path (legacy)"""
+            # Primero intentar con imagen_data (nuevo formato BYTEA/base64)
+            imagen_b64 = producto.get('imagen_data')
+            if imagen_b64:
+                if imagen_b64 in self._pixbuf_cache:
+                    return self._pixbuf_cache[imagen_b64]
+                
+                try:
+                    import base64
+                    # Decodificar base64 a bytes
+                    imagen_bytes = base64.b64decode(imagen_b64)
+                    
+                    # Guardar en archivo temporal
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                        tmp.write(imagen_bytes)
+                        tmp.flush()
+                        pixbuf = GdkPixbuf.Pixbuf.new_from_file(tmp.name)
+                        self._pixbuf_cache[imagen_b64[:50]] = pixbuf  # Cache con clave corta
+                        return pixbuf
+                except Exception as e:
+                    logger.warning(f"No se pudo cargar imagen_data: {e}")
+                    return None
+            
+            # Fallback a imagen_path (legacy)
             imagen = producto.get('imagen_path')
             if not imagen:
                 return None

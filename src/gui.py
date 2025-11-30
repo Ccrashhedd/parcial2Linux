@@ -8,9 +8,9 @@ import sys
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, scrolledtext
 from datetime import datetime
-import urllib.request
+from io import BytesIO
+import base64
 from urllib.error import URLError
-import tempfile
 
 try:
     from PIL import Image, ImageTk
@@ -25,6 +25,74 @@ from src.impresora import Impresora
 from config import APP_CONFIG
 
 CARPETA_IMAGENES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "imagenes")
+
+
+def es_url(valor: str) -> bool:
+    """Verifica si un valor es una URL"""
+    return isinstance(valor, str) and valor.lower().startswith(("http://", "https://"))
+
+
+def abrir_imagen_pillow(origen: str):
+    """Abre una imagen desde URL o ruta local"""
+    if not HAS_PIL or not origen:
+        return None
+    
+    try:
+        if es_url(origen):
+            import urllib.request
+            with urllib.request.urlopen(origen, timeout=10) as response:
+                data = response.read()
+            return Image.open(BytesIO(data))
+        else:
+            ruta = origen if os.path.isabs(origen) else os.path.join(CARPETA_IMAGENES, origen)
+            if not os.path.exists(ruta):
+                return None
+            return Image.open(ruta)
+    except Exception as e:
+        print(f"Error abriendo imagen: {e}")
+        return None
+
+
+def comprimir_imagen(ruta_imagen, max_width=300, max_height=300, quality=85):
+    """Comprime una imagen a un tamaño más pequeño y retorna bytes"""
+    if not HAS_PIL or not ruta_imagen or not os.path.exists(ruta_imagen):
+        return None
+    
+    try:
+        with Image.open(ruta_imagen) as img:
+            # Convertir a RGB si es RGBA
+            if img.mode in ('RGBA', 'LA', 'P'):
+                rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                rgb_img.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                img = rgb_img
+            
+            # Redimensionar manteniendo proporción
+            img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+            
+            # Guardar a BytesIO en JPEG comprimido
+            buffer = BytesIO()
+            img.save(buffer, format='JPEG', quality=quality, optimize=True)
+            return buffer.getvalue()
+    except Exception as e:
+        print(f"Error comprimiendo imagen: {e}")
+        return None
+
+
+def imagen_de_bytes(imagen_b64_str):
+    """Convierte una cadena base64 a PIL.Image"""
+    if not HAS_PIL or not imagen_b64_str:
+        return None
+    
+    try:
+        # Si es None o string vacío, retornar None
+        if isinstance(imagen_b64_str, str) and imagen_b64_str.strip():
+            imagen_bytes = base64.b64decode(imagen_b64_str)
+            img = Image.open(BytesIO(imagen_bytes))
+            return img.copy()
+        return None
+    except Exception as e:
+        print(f"Error decodificando imagen: {e}")
+        return None
 
 
 class GestorProductos:
@@ -113,6 +181,16 @@ class GestorProductos:
                 cursor="hand2",
             )
             btn.pack(side=tk.LEFT, padx=5)
+        
+        # Etiqueta para mostrar selección
+        self.label_seleccion = tk.Label(
+            header,
+            text="",
+            font=("Segoe UI", 9),
+            bg=self.color_primario,
+            fg="#FFD700",
+        )
+        self.label_seleccion.pack(side=tk.LEFT, padx=20)
 
     def _crear_area_busqueda(self, parent):
         frame = tk.Frame(parent, bg=self.color_panel, height=50)
@@ -221,52 +299,63 @@ class GestorProductos:
 
     # Eventos y lógica de negocio
 
-    def _cargar_imagen_tabla(self, nombre_imagen: str):
-        """Carga imagen pequeña (80x80) para la tabla"""
-        if not nombre_imagen:
+    def _cargar_imagen_tabla(self, imagen_b64: str):
+        """Carga imagen pequeña (80x80) para la tabla desde base64"""
+        if not imagen_b64 or not HAS_PIL:
+            return None
+        
+        # Si es None o vacío, retornar None
+        if isinstance(imagen_b64, str):
+            imagen_b64 = imagen_b64.strip()
+            if not imagen_b64:
+                return None
+        else:
             return None
 
-        cache_key = f"tabla_{nombre_imagen}"
+        cache_key = f"tabla_{imagen_b64[:20]}"
         if cache_key in self._imagenes_cache:
             return self._imagenes_cache[cache_key]
 
-        # Construir la ruta de la imagen
-        ruta = os.path.join(CARPETA_IMAGENES, nombre_imagen)
-
-        if not os.path.exists(ruta) or not HAS_PIL:
+        imagen = imagen_de_bytes(imagen_b64)
+        if not imagen:
             return None
 
         try:
-            imagen = Image.open(ruta)
             imagen.thumbnail((80, 80), Image.Resampling.LANCZOS)
             foto = ImageTk.PhotoImage(imagen)
             self._imagenes_cache[cache_key] = foto
             return foto
         except Exception as e:
-            print(f"Error cargando imagen {nombre_imagen}: {e}")
+            print(f"Error procesando imagen: {e}")
             return None
 
-    def _cargar_imagen_item(self, nombre_imagen: str):
-        if not nombre_imagen:
+    def _cargar_imagen_item(self, imagen_b64: str):
+        if not imagen_b64 or not HAS_PIL:
+            return None
+        
+        # Si es None o vacío, retornar None
+        if isinstance(imagen_b64, str):
+            imagen_b64 = imagen_b64.strip()
+            if not imagen_b64:
+                return None
+        else:
             return None
 
-        if nombre_imagen in self._imagenes_cache:
-            return self._imagenes_cache[nombre_imagen]
+        cache_key = f"item_{imagen_b64[:20]}"
+        if cache_key in self._imagenes_cache:
+            return self._imagenes_cache[cache_key]
 
-        # Construir la ruta de la imagen
-        ruta = os.path.join(CARPETA_IMAGENES, nombre_imagen)
-
-        if not os.path.exists(ruta) or not HAS_PIL:
+        imagen = imagen_de_bytes(imagen_b64)
+        if not imagen:
             return None
 
         try:
-            imagen = Image.open(ruta)
             imagen.thumbnail((150, 150), Image.Resampling.LANCZOS)
             foto = ImageTk.PhotoImage(imagen)
-            self._imagenes_cache[nombre_imagen] = foto
+            self._imagenes_cache[cache_key] = foto
             return foto
         except Exception as e:
-            print(f"Error cargando imagen {nombre_imagen}: {e}")
+            print(f"Error procesando imagen: {e}")
             return None
 
     def cargar_productos(self):
@@ -277,6 +366,8 @@ class GestorProductos:
             widget.destroy()
         
         self.producto_items = {}
+        self.productos_seleccionados = set()
+        self._actualizar_etiqueta_seleccion()
         
         for producto in productos:
             self._crear_fila_producto(producto)
@@ -292,8 +383,8 @@ class GestorProductos:
         img_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=8, pady=8)
         img_frame.pack_propagate(False)
 
-        # Cargar y mostrar imagen
-        foto = self._cargar_imagen_tabla(producto.get("imagen_path"))
+        # Cargar y mostrar imagen desde base64
+        foto = self._cargar_imagen_tabla(producto.get("imagen_data")) if producto.get("imagen_data") else None
         if foto:
             label_img = tk.Label(img_frame, image=foto, bg="#1A1A1A", bd=0)
             label_img.image = foto
@@ -347,7 +438,19 @@ class GestorProductos:
                 for child in frame.winfo_children():
                     self._cambiar_bg_recursivo(child, "#2E2E2E")
         
+        # Actualizar etiqueta de selección
+        self._actualizar_etiqueta_seleccion()
         self.producto_seleccionado = producto_id
+    
+    def _actualizar_etiqueta_seleccion(self):
+        """Actualiza la etiqueta que muestra cuántos productos están seleccionados"""
+        cantidad = len(self.productos_seleccionados)
+        if cantidad == 0:
+            self.label_seleccion.config(text="")
+        elif cantidad == 1:
+            self.label_seleccion.config(text="(1 seleccionado)")
+        else:
+            self.label_seleccion.config(text=f"({cantidad} seleccionados)")
     
     def _cambiar_bg_recursivo(self, widget, color):
         """Cambia background recursivamente"""
@@ -406,21 +509,48 @@ class GestorProductos:
             VentanaProducto(self.root, self.db, self.cargar_productos, modo="editar", producto=producto)
 
     def eliminar_producto(self):
-        producto = self._obtener_producto_seleccionado()
-        if not producto:
+        # Verificar si hay productos seleccionados
+        if not self.productos_seleccionados:
+            messagebox.showwarning("Atención", "Selecciona al menos un producto para eliminar\n(Ctrl+Click para múltiples)")
             return
-        if not messagebox.askyesno("Confirmar", f"¿Eliminar '{producto['nombre']}'?"):
+        
+        # Contar productos seleccionados
+        cantidad = len(self.productos_seleccionados)
+        
+        # Mostrar confirmación
+        if cantidad == 1:
+            producto = self.db.obtener_producto(list(self.productos_seleccionados)[0])
+            mensaje = f"¿Eliminar '{producto['nombre']}'?"
+        else:
+            mensaje = f"¿Eliminar {cantidad} productos seleccionados?"
+        
+        if not messagebox.askyesno("Confirmar eliminación", mensaje):
             return
+        
+        # Eliminar productos
         try:
-            self.db.eliminar_producto(producto["id"])
-            messagebox.showinfo("Éxito", "Producto eliminado correctamente")
+            for producto_id in self.productos_seleccionados:
+                self.db.eliminar_producto(producto_id)
+            
+            # Mensaje de éxito
+            if cantidad == 1:
+                mensaje_exito = "Producto eliminado correctamente"
+            else:
+                mensaje_exito = f"{cantidad} productos eliminados correctamente"
+            
+            messagebox.showinfo("Éxito", mensaje_exito)
+            self.productos_seleccionados = set()
             self.cargar_productos()
         except Exception as error:
             messagebox.showerror("Error", str(error))
 
     def abrir_vista_previa(self):
         if not self.productos_seleccionados:
-            messagebox.showwarning("Atención", "Selecciona productos para imprimir\n(Ctrl+Click para múltiples)")
+            messagebox.showwarning(
+                "Atención", 
+                "Selecciona productos para imprimir\n\n"
+                "💡 Usa Ctrl+Click para seleccionar múltiples productos"
+            )
             return
 
         productos = []
@@ -441,12 +571,13 @@ class VentanaProducto:
         self.callback = callback
         self.modo = modo
         self.producto = producto
-        self.nueva_imagen = None
-        self.imagen_guardada = producto.get("imagen_path") if producto else None
+        self.imagen_bytes = None
+        self.imagen_original = producto.get("imagen_data") if producto else None
 
         self.ventana = tk.Toplevel(parent)
         self.ventana.title("Nuevo Producto" if modo == "crear" else f"Editar - {producto['nombre']}")
-        self.ventana.geometry("600x700")
+        self.ventana.geometry("550x400")  # Tamaño inicial más pequeño
+        self.ventana.minsize(550, 400)
         self.ventana.configure(bg="#1E1E1E")
         self.ventana.transient(parent)  # La ventana siempre está sobre la parent
         self.ventana.grab_set()  # Modal
@@ -456,6 +587,8 @@ class VentanaProducto:
 
         if producto:
             self._cargar_datos()
+            # Ajustar tamaño si hay imagen
+            self._ajustar_ventana()
 
     def _construir_formulario(self):
         main_frame = tk.Frame(self.ventana, bg="#1E1E1E")
@@ -515,7 +648,7 @@ class VentanaProducto:
 
         tk.Button(
             barra_imagen,
-            text="📷 Seleccionar",
+            text="📷 Seleccionar Imagen",
             command=self.seleccionar_imagen,
             bg="#FF9800",
             fg="white",
@@ -526,19 +659,6 @@ class VentanaProducto:
             cursor="hand2",
         ).pack(side=tk.LEFT)
 
-        tk.Button(
-            barra_imagen,
-            text="🌐 URL",
-            command=self.ingresar_url_imagen,
-            bg="#2196F3",
-            fg="white",
-            font=("Segoe UI", 10, "bold"),
-            borderwidth=0,
-            padx=15,
-            pady=8,
-            cursor="hand2",
-        ).pack(side=tk.LEFT, padx=5)
-
         self.label_imagen = tk.Label(
             barra_imagen,
             text="Sin imagen",
@@ -548,8 +668,8 @@ class VentanaProducto:
         )
         self.label_imagen.pack(side=tk.LEFT, padx=10)
 
-        self.preview = tk.Label(contenido, bg="#2E2E2E", height=180)
-        self.preview.pack(fill=tk.X, pady=10)
+        self.preview = tk.Label(contenido, bg="#2E2E2E", width=40, height=15)
+        self.preview.pack(fill=tk.BOTH, expand=False, pady=10)
 
         acciones = tk.Frame(contenido, bg="#1E1E1E")
         acciones.pack(fill=tk.X, pady=20)
@@ -607,10 +727,28 @@ class VentanaProducto:
         self.entry_precio.insert(0, str(self.producto["precio"]))
         self.text_descripcion.insert("1.0", self.producto.get("descripcion") or "")
 
-        if self.imagen_guardada:
-            self.label_imagen.config(text=self.imagen_guardada, fg="#4DD0E1")
-            ruta = os.path.join(CARPETA_IMAGENES, self.imagen_guardada)
-            self._mostrar_preview(ruta)
+        if self.imagen_original:
+            self.label_imagen.config(text="✓ Imagen actual", fg="#4DD0E1")
+            self._mostrar_preview(self.imagen_original)
+            # Ajustar ventana después de mostrar preview
+            self._ajustar_ventana()
+
+    def _ajustar_ventana(self):
+        """Ajusta el tamaño de la ventana de forma dinámica"""
+        self.ventana.update_idletasks()
+        # Obtener requisitos de altura
+        ancho = self.ventana.winfo_reqwidth()
+        alto = self.ventana.winfo_reqheight()
+        
+        # Limitar el tamaño máximo
+        ancho = min(ancho, 550)
+        alto = min(alto, 700)
+        
+        # Asegurar tamaño mínimo
+        ancho = max(ancho, 550)
+        alto = max(alto, 400)
+        
+        self.ventana.geometry(f"{ancho}x{alto}")
 
     def seleccionar_imagen(self):
         archivo = filedialog.askopenfilename(
@@ -622,9 +760,15 @@ class VentanaProducto:
         if not archivo:
             return
 
-        self.nueva_imagen = archivo
-        self.label_imagen.config(text=os.path.basename(archivo), fg="#4DD0E1")
-        self._mostrar_preview(archivo)
+        # Comprimir la imagen a bytes
+        imagen_bytes = comprimir_imagen(archivo, max_width=300, max_height=300, quality=85)
+        if not imagen_bytes:
+            messagebox.showerror("Error", "No se pudo procesar la imagen")
+            return
+
+        self.imagen_bytes = imagen_bytes
+        self.label_imagen.config(text=os.path.basename(archivo)[:30], fg="#4DD0E1")
+        self._mostrar_preview_bytes(imagen_bytes)
 
     def ingresar_url_imagen(self):
         """Abre un diálogo para ingresar URL de imagen"""
@@ -659,15 +803,18 @@ class VentanaProducto:
                 messagebox.showwarning("Atención", "Por favor ingresa una URL", parent=ventana_url)
                 return
 
+            if not es_url(url):
+                messagebox.showwarning("Atención", "La URL debe iniciar con http:// o https://", parent=ventana_url)
+                return
+
             try:
-                # Descargar imagen de URL
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                    urllib.request.urlretrieve(url, tmp.name)
-                    self.nueva_imagen = tmp.name
-                    self.label_imagen.config(text=url[:40] + "...", fg="#4DD0E1")
-                    self._mostrar_preview(tmp.name)
-                    ventana_url.destroy()
-                    messagebox.showinfo("Éxito", "Imagen cargada correctamente")
+                if not self._mostrar_preview(url):
+                    raise ValueError("No se pudo mostrar la vista previa")
+
+                self.nueva_imagen = url  # Guardar URL pura, no temporal
+                self.label_imagen.config(text=url[:40] + "...", fg="#4DD0E1")
+                ventana_url.destroy()
+                messagebox.showinfo("Éxito", "Imagen cargada correctamente")
             except URLError as e:
                 messagebox.showerror("Error", f"No se pudo descargar la imagen:\n{str(e)[:100]}", parent=ventana_url)
             except Exception as e:
@@ -684,21 +831,47 @@ class VentanaProducto:
             pady=8,
         ).pack(pady=10)
 
-    def _mostrar_preview(self, ruta):
-        if not ruta or not HAS_PIL or not os.path.exists(ruta):
+    def _mostrar_preview(self, origen):
+        if not origen:
             self.preview.config(image="", text="(Vista previa no disponible)", fg="#B0BEC5")
             self.preview.image = None
-            return
+            return False
+
+        imagen = abrir_imagen_pillow(origen)
+        if not imagen:
+            self.preview.config(image="", text="(Vista previa no disponible)", fg="#B0BEC5")
+            self.preview.image = None
+            return False
+
+        imagen.thumbnail((360, 260), Image.Resampling.LANCZOS)
+        foto = ImageTk.PhotoImage(imagen)
+        self.preview.config(image=foto, text="")
+        self.preview.image = foto
+        # Ajustar ventana cuando aparece la imagen
+        self.ventana.after(100, self._ajustar_ventana)
+        return True
+
+    def _mostrar_preview_bytes(self, imagen_bytes):
+        """Muestra preview desde bytes de imagen comprimida"""
+        if not imagen_bytes or not HAS_PIL:
+            self.preview.config(image="", text="(Vista previa no disponible)", fg="#B0BEC5")
+            self.preview.image = None
+            return False
 
         try:
-            imagen = Image.open(ruta)
+            imagen = Image.open(BytesIO(imagen_bytes))
             imagen.thumbnail((360, 260), Image.Resampling.LANCZOS)
             foto = ImageTk.PhotoImage(imagen)
             self.preview.config(image=foto, text="")
             self.preview.image = foto
-        except Exception:
+            # Ajustar ventana cuando aparece la imagen
+            self.ventana.after(100, self._ajustar_ventana)
+            return True
+        except Exception as e:
+            print(f"Error mostrando preview de bytes: {e}")
             self.preview.config(image="", text="(Vista previa no disponible)", fg="#B0BEC5")
             self.preview.image = None
+            return False
 
     def guardar(self):
         nombre = self.entry_nombre.get().strip()
@@ -717,15 +890,21 @@ class VentanaProducto:
             messagebox.showerror("Error", "Precio inválido")
             return
 
+        # Usar imagen_bytes si se seleccionó una nueva, si no usar la original
+        imagen_a_guardar = self.imagen_bytes if self.imagen_bytes is not None else self.imagen_original
+
         try:
             if self.modo == "crear":
-                self.db.crear_producto(nombre, precio, descripcion, self.nueva_imagen)
+                self.db.crear_producto(nombre, precio, descripcion, imagen_a_guardar)
                 mensaje = "Producto creado correctamente"
             else:
                 self.db.actualizar_producto(
-                    self.producto["id"], nombre, precio, descripcion, self.nueva_imagen
+                    self.producto["id"], nombre, precio, descripcion, imagen_a_guardar
                 )
                 mensaje = "Producto actualizado correctamente"
+
+            self.imagen_original = imagen_a_guardar
+            self.imagen_bytes = None
 
             self.callback()
             self.ventana.destroy()
@@ -879,16 +1058,23 @@ class VentanaVistaPrevia:
         img_frame = tk.Frame(fila1, bg="#F0F0F0", relief=tk.SUNKEN, bd=1)
         img_frame.pack(side=tk.LEFT, padx=(0, 30))
 
-        imagen_path = os.path.join(CARPETA_IMAGENES, producto.get('imagen_path', ''))
-        if os.path.exists(imagen_path):
+        # Intentar cargar desde imagen_data (base64)
+        imagen_pillow = None
+        if producto.get('imagen_data'):
+            imagen_pillow = imagen_de_bytes(producto.get('imagen_data'))
+        
+        # Si no hay imagen_data, intentar con imagen_path (legacy)
+        if not imagen_pillow and producto.get('imagen_path'):
+            imagen_pillow = abrir_imagen_pillow(producto.get('imagen_path'))
+        
+        if imagen_pillow:
             try:
-                img = Image.open(imagen_path)
-                img.thumbnail((250, 250), Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(img)
+                imagen_pillow.thumbnail((250, 250), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(imagen_pillow)
                 label_img = tk.Label(img_frame, image=photo, bg="#F0F0F0")
                 label_img.image = photo
                 label_img.pack(padx=5, pady=5)
-            except:
+            except Exception:
                 tk.Label(img_frame, text="No se puede cargar la imagen", bg="#F0F0F0", fg="#999").pack(padx=20, pady=20)
         else:
             tk.Label(img_frame, text="📷\nSin imagen", font=("Arial", 20), bg="#F0F0F0", fg="#CCC").pack(padx=20, pady=20)
@@ -1100,26 +1286,20 @@ class VentanaProductoIndividual:
         img_label = tk.Label(frame, bg="#1A1A1A", height=12, width=30)
         img_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Cargar imagen
-        imagen_path = self.producto.get("imagen_path")
-        if imagen_path:
-            try:
-                # Si es URL o archivo local
-                if imagen_path.startswith(('http://', 'https://')):
-                    # Descargar desde URL
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                        urllib.request.urlretrieve(imagen_path, tmp.name)
-                        imagen = Image.open(tmp.name)
-                else:
-                    # Archivo local
-                    imagen = Image.open(imagen_path)
-
-                imagen.thumbnail((300, 300), Image.Resampling.LANCZOS)
-                foto = ImageTk.PhotoImage(imagen)
-                img_label.config(image=foto, text="")
-                img_label.image = foto
-            except Exception:
-                img_label.config(text="❌\nNo se pudo cargar", fg="#FF6B6B")
+        # Intentar cargar desde imagen_data (base64)
+        imagen_pillow = None
+        if self.producto.get("imagen_data"):
+            imagen_pillow = imagen_de_bytes(self.producto.get("imagen_data"))
+        
+        # Si no hay imagen_data, intentar con imagen_path (legacy)
+        if not imagen_pillow and self.producto.get("imagen_path"):
+            imagen_pillow = abrir_imagen_pillow(self.producto.get("imagen_path"))
+        
+        if imagen_pillow:
+            imagen_pillow.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            foto = ImageTk.PhotoImage(imagen_pillow)
+            img_label.config(image=foto, text="")
+            img_label.image = foto
         else:
             img_label.config(text="📷\nSin imagen", fg="#999999")
 

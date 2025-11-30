@@ -128,14 +128,14 @@ class BaseDatos:
             return []
 
     def obtener_todos_productos(self):
-        """Obtiene todos los productos"""
+        """Obtiene todos los productos (con imagen_data codificado en base64)"""
         query = """
         SELECT 
             id, 
             nombre, 
             precio, 
             descripcion, 
-            imagen_path,
+            encode(imagen_data, 'base64') as imagen_data,
             fecha_creacion,
             fecha_actualizacion
         FROM productos 
@@ -145,14 +145,14 @@ class BaseDatos:
         return resultado if resultado else []
 
     def obtener_producto(self, producto_id):
-        """Obtiene un producto específico"""
+        """Obtiene un producto específico (incluye imagen_data)"""
         query = f"""
         SELECT 
             id, 
             nombre, 
             precio, 
             descripcion, 
-            imagen_path,
+            encode(imagen_data, 'base64') as imagen_data,
             fecha_creacion,
             fecha_actualizacion
         FROM productos 
@@ -164,17 +164,25 @@ class BaseDatos:
             return resultado[0]
         return None
 
-    def crear_producto(self, nombre, precio, descripcion, imagen_path=None):
-        """Crea un nuevo producto"""
+    def crear_producto(self, nombre, precio, descripcion, imagen_bytes=None):
+        """Crea un nuevo producto con imagen en BYTEA"""
         try:
             # Escapar valores
             nombre = nombre.replace("'", "''")
             descripcion = descripcion.replace("'", "''")
-            imagen_ruta = imagen_path.replace("'", "''") if imagen_path else None
+            
+            # Convertir bytes a formato PostgreSQL base64
+            imagen_str = ""
+            if imagen_bytes:
+                import base64
+                imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
+                imagen_str = f"decode('{imagen_b64}', 'base64')"
+            else:
+                imagen_str = "NULL"
 
             query = f"""
-            INSERT INTO productos (nombre, precio, descripcion, imagen_path)
-            VALUES ('{nombre}', {precio}, '{descripcion}', '{imagen_ruta if imagen_ruta else ""}')
+            INSERT INTO productos (nombre, precio, descripcion, imagen_data)
+            VALUES ('{nombre}', {precio}, '{descripcion}', {imagen_str})
             RETURNING id
             """
 
@@ -189,21 +197,28 @@ class BaseDatos:
             logger.error(f"Error al crear producto: {e}")
             return None
 
-    def actualizar_producto(self, producto_id, nombre, precio, descripcion, imagen_path=None):
+    def actualizar_producto(self, producto_id, nombre, precio, descripcion, imagen_bytes=None):
         """Actualiza un producto existente"""
         try:
             # Escapar valores
             nombre = nombre.replace("'", "''")
             descripcion = descripcion.replace("'", "''")
-            imagen_ruta = imagen_path.replace("'", "''") if imagen_path else None
+            
+            # Convertir bytes a formato PostgreSQL base64
+            imagen_str = ""
+            if imagen_bytes is not None:
+                import base64
+                imagen_b64 = base64.b64encode(imagen_bytes).decode('utf-8')
+                imagen_str = f", imagen_data = decode('{imagen_b64}', 'base64')"
+            # Si imagen_bytes es None, no actualizar la imagen
 
             query = f"""
             UPDATE productos 
             SET 
                 nombre = '{nombre}',
                 precio = {precio},
-                descripcion = '{descripcion}',
-                imagen_path = '{imagen_ruta if imagen_ruta else ""}',
+                descripcion = '{descripcion}'
+                {imagen_str},
                 fecha_actualizacion = CURRENT_TIMESTAMP
             WHERE id = {producto_id}
             """
@@ -229,7 +244,7 @@ class BaseDatos:
             return False
 
     def buscar_productos(self, termino):
-        """Busca productos por nombre"""
+        """Busca productos por nombre (con imagen_data)"""
         try:
             termino = termino.replace("'", "''")
             query = f"""
@@ -238,7 +253,7 @@ class BaseDatos:
                 nombre, 
                 precio, 
                 descripcion, 
-                imagen_path,
+                encode(imagen_data, 'base64') as imagen_data,
                 fecha_creacion,
                 fecha_actualizacion
             FROM productos 
@@ -254,7 +269,7 @@ class BaseDatos:
 
     @staticmethod
     def obtener_ruta_imagen(nombre_imagen):
-        """Obtiene la ruta completa de una imagen"""
+        """Obtiene la ruta completa de una imagen (DEPRECATED - ahora están en DB)"""
         if nombre_imagen:
             return os.path.join(CARPETA_IMAGENES, nombre_imagen)
         return None
