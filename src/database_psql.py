@@ -62,7 +62,7 @@ class BaseDatos:
             env = os.environ.copy()
             env['PGPASSWORD'] = self.password
             # Configurar encoding para soportar LATIN1 del servidor Windows
-            env['PGCLIENTENCODING'] = 'LATIN1'
+            env['PGCLIENTENCODING'] = 'UTF8'
             env['LANG'] = 'C.UTF-8'  # UTF-8 for Python
             env['LC_ALL'] = 'C.UTF-8'
 
