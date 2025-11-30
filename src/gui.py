@@ -365,6 +365,9 @@ class GestorProductos:
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
         
+        # Limpiar cache de imágenes para que se recarguen de la BD
+        self._imagenes_cache.clear()
+        
         self.producto_items = {}
         self.productos_seleccionados = set()
         self._actualizar_etiqueta_seleccion()
@@ -483,6 +486,9 @@ class GestorProductos:
         # Limpiar filas
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
+        
+        # Limpiar cache de imágenes
+        self._imagenes_cache.clear()
         
         self.producto_items = {}
         
