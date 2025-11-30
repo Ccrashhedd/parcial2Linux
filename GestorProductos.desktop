@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gestor de Productos
+Comment=Aplicación para gestionar productos con PostgreSQL
+Exec=/home/angelbroce/Documentos/linux phyton/gestor_productos/ejecutar.sh
+Icon=preferences-system-details
+Terminal=false
+Categories=Utility;Database;
+Path=/home/angelbroce/Documentos/linux phyton/gestor_productos
+StartupNotify=true
