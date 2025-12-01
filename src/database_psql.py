@@ -218,8 +218,7 @@ class BaseDatos:
                 nombre = '{nombre}',
                 precio = {precio},
                 descripcion = '{descripcion}'
-                {imagen_str},
-                fecha_actualizacion = CURRENT_TIMESTAMP
+                {imagen_str}
             WHERE id = {producto_id}
             """
 

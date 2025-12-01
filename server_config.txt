@@ -1,0 +1,14 @@
+# Configuración del servidor remoto
+# Si cambias de red, actualiza el hostname o IP aquí
+
+# IP o hostname del servidor Windows
+SERVER_IP=WIN-E6SQ6ALCVS5
+
+# Usuario PostgreSQL en el servidor
+SERVER_USER=postgres
+
+# Contraseña PostgreSQL en el servidor
+SERVER_PASSWORD=postgres123
+
+# Puerto PostgreSQL (por defecto 5432)
+SERVER_PORT=5432

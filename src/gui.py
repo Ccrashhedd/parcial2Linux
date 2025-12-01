@@ -578,7 +578,15 @@ class VentanaProducto:
         self.modo = modo
         self.producto = producto
         self.imagen_bytes = None
-        self.imagen_original = producto.get("imagen_data") if producto else None
+        
+        # Si el producto tiene imagen_data (string base64), convertir a bytes
+        if producto and producto.get("imagen_data"):
+            try:
+                self.imagen_original = base64.b64decode(producto.get("imagen_data"))
+            except Exception:
+                self.imagen_original = None
+        else:
+            self.imagen_original = None
 
         self.ventana = tk.Toplevel(parent)
         self.ventana.title("Nuevo Producto" if modo == "crear" else f"Editar - {producto['nombre']}")
@@ -735,7 +743,7 @@ class VentanaProducto:
 
         if self.imagen_original:
             self.label_imagen.config(text="✓ Imagen actual", fg="#4DD0E1")
-            self._mostrar_preview(self.imagen_original)
+            self._mostrar_preview_bytes(self.imagen_original)
             # Ajustar ventana después de mostrar preview
             self._ajustar_ventana()
 
